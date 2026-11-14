@@ -1,0 +1,30 @@
+{
+  "repository": "https://github.com/facebookresearch/denoiser",
+  "commit": "8afd7c166699bb3c8b2d95b6dd706f71e1075df0",
+  "files": {
+    "denoiser/__init__.py": {
+      "sha256": "8f1ef20e7938e5d2e7f27a63c54cc117db13ec40711ee4575b66fb232bbdd652",
+      "url": "https://api.github.com/repos/facebookresearch/denoiser/contents/denoiser/__init__.py?ref=8afd7c166699bb3c8b2d95b6dd706f71e1075df0"
+    },
+    "denoiser/demucs.py": {
+      "sha256": "8e9c21935c647e24f31cefcc63a298cb2a1c25bc99aab44bbe63a7b5570836be",
+      "url": "https://api.github.com/repos/facebookresearch/denoiser/contents/denoiser/demucs.py?ref=8afd7c166699bb3c8b2d95b6dd706f71e1075df0"
+    },
+    "denoiser/resample.py": {
+      "sha256": "3e8ea258036660b7d33415794fe09ee010510f4d760bdfc5d5de268d6efb40f5",
+      "url": "https://api.github.com/repos/facebookresearch/denoiser/contents/denoiser/resample.py?ref=8afd7c166699bb3c8b2d95b6dd706f71e1075df0"
+    },
+    "denoiser/utils.py": {
+      "sha256": "c05fbdebadda27ef7a49e6f5c557a4c4bf3a8f1e67ad65fac22f1cb5ada83321",
+      "url": "https://api.github.com/repos/facebookresearch/denoiser/contents/denoiser/utils.py?ref=8afd7c166699bb3c8b2d95b6dd706f71e1075df0"
+    },
+    "LICENSE": {
+      "sha256": "336255dc30193e8e15d689d9481bb05673d89055718f3a96923a7ffb99adbbaf",
+      "url": "https://api.github.com/repos/facebookresearch/denoiser/contents/LICENSE?ref=8afd7c166699bb3c8b2d95b6dd706f71e1075df0"
+    },
+    "README.md": {
+      "sha256": "d985ffd2ec20598aa4c3bcee998c39d428189276e141a56e0cb04500f0741bb2",
+      "url": "https://api.github.com/repos/facebookresearch/denoiser/contents/README.md?ref=8afd7c166699bb3c8b2d95b6dd706f71e1075df0"
+    }
+  }
+}

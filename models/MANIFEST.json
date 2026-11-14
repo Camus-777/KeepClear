@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "sample_rate": 16000,
+  "block_samples": 256,
+  "order": [
+    "alkove-focus",
+    "denoiser-dns48"
+  ],
+  "packages": {
+    "alkove": "0.4.0",
+    "numpy": "2.2.6",
+    "torch": "2.8.0+cpu"
+  },
+  "alkove": {
+    "file": "alkove/alkove-focus-1-preview.alk",
+    "sha256": "a63cda32e023b8d76089f4c3df0cc2c69ba36017b8f6cdea1da1094ef8022b6a",
+    "upstream": {
+      "name": "alkove-focus-1-preview",
+      "file": "alkove-focus-1-preview.alk",
+      "bytes": 1111696,
+      "sha256": "a63cda32e023b8d76089f4c3df0cc2c69ba36017b8f6cdea1da1094ef8022b6a",
+      "revision": "8e91ef608366cf503fbd8aaa44bc2000dce899ed"
+    }
+  },
+  "cue": {
+    "file": "alkove/alkove-cue-1-preview.alk",
+    "sha256": "19e8b6c66ee9ce23bba3b8011f03827c5ba4bb2fe8bec25fe07558a78950190a",
+    "upstream": {
+      "name": "alkove-cue-1-preview",
+      "file": "alkove-cue-1-preview.alk",
+      "bytes": 1199892,
+      "sha256": "19e8b6c66ee9ce23bba3b8011f03827c5ba4bb2fe8bec25fe07558a78950190a",
+      "revision": "0e1f30380bdfb3201b5d4fd7d9e4197f71f11a60"
+    },
+    "reason": "Alkove 0.4.0 Processor dependency; gate disabled"
+  },
+  "denoiser": {
+    "file": "denoiser/dns48-state.pt",
+    "sha256": "11decc9d8e3f0998a64caed6b57b68a40cb200a627996a636625f20bdb91f1d6",
+    "url": "https://dl.fbaipublicfiles.com/adiyoss/denoiser/dns48-11decc9d8e3f0998.th",
+    "commit": "8afd7c166699bb3c8b2d95b6dd706f71e1075df0",
+    "license": "CC-BY-NC-4.0"
+  }
+}

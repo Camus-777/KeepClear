@@ -1,0 +1,16 @@
+KeepQuiet
+Copyright (c) 2026 KeepQuiet contributors
+
+Original KeepQuiet code, documentation and artwork are licensed under
+Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0).
+See LICENSE and LICENSING.md for attribution and scope.
+
+Third-party code, models, drivers and runtimes retain their own licenses.
+Alkove: copyright 2026 Eddy Bordi, Apache-2.0; see its LICENSE and NOTICE.
+Facebook Research Denoiser: original upstream modules and DNS48 weights,
+CC BY-NC 4.0; see third_party/denoiser.
+VB-CABLE by VB-Audio Software / Vincent Burel is donationware.
+Origin: https://www.vb-cable.com/
+Support: https://shop.vb-audio.com/en/win-apps/11-vb-cable.html
+The base VB-CABLE driver archive is bundled unmodified. A+B and C+D are not included.
+Runtime notices are preserved with the distributed Python packages.

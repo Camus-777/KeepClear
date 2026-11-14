@@ -1,0 +1,65 @@
+# 架构与维护约定
+
+```text
+真实麦克风（设备混音格式）
+    │ WASAPI 事件采集线程；多声道平均；PCM → float
+    │ 自研流式 FIR：设备采样率 → 16 kHz
+    ▼
+输入 FIFO（4096 样本，256 ms 上限）
+    │ 处理线程，每次 256 样本
+    ├─ 可选 Python worker（单进程持有以下两级状态）
+    │      Alkove Focus → Facebook Denoiser DemucsStreamer
+    │      缺少模型/依赖则失败，绝不假装降噪成功
+    ├─ 输出增益平滑 + 峰值限幅
+    ▼
+输出 FIFO（4096 样本，256 ms 上限）
+    │ WASAPI 事件输出线程；启动预留 48 ms
+    │ 自研 FIR：16 kHz → 设备采样率；±0.3% 时钟补偿
+    │ 本地重采样 FIFO（设备采样率 × 0.5 秒硬上限）
+    │ float → PCM；单声道复制到设备输出通道
+    ▼
+CABLE Input（播放端）→ VB-CABLE 驱动 → CABLE Output（录音端）→ 游戏/通话
+```
+
+## 核心接口
+
+`IAudioStage.Process(float[])` 的输入和输出统一为 16 kHz 单声道 float32 PCM。允许原位修改，允许输出长度为零或可变，单次输出不得超过 32000 样本且必须有限数值。持有跨块状态的阶段只在单个处理线程上调用。按构造顺序依次运行；上一级无输出时，不伪造零块交给下一级。`Dispose()` 逆序释放阶段。
+
+主界面固定启用两级模型；输出增益从配置读取并在启动时固定。每次重启重新创建全部模型和重采样状态。关闭时立即停止输出，丢弃待处理尾部，不调用模型 flush，以避免停止后继续发出语音。文件处理若另行开发，则需单独实现有序 flush。
+
+## 工作进程协议
+
+`stdout` 专供二进制协议；Python 日志重定向到 `stderr`。仅匿名管道，不开放 TCP 端口。Python 以 `-I` 隔离模式启动，因此需要依赖安装在所选解释器的环境内；不依赖用户 `PYTHONPATH`。可填写 `.venv/Scripts/python.exe` 的绝对路径。
+
+0.2.0 已接入真实模型。程序自动寻找项目 `.venv`；两个适配器只读取本地权重。Alkove 0.4.0 的 Processor 要求同时提供 Focus/Cue（VAD 门控和自动增益关闭）；Denoiser 仅导入 third_party 中固定提交的原始推理模块。完整 SHA256、版本与许可见 MODEL-INTEGRATION.md。模型预热在打开麦克风之前完成，随后重建流状态。
+
+握手为 ASCII `CV01` + little-endian int32 `16000`。每个请求和回复均为 little-endian int32 样本数，再接等长 float32 little-endian PCM，允许 0 样本。模型初始化 45 秒超时；每次往返 2 秒超时；超时终止模型进程并停止音频链。没有自动下载、没有 fallback 到原声。实时处理速度仍需显著低于每 16 ms 块；2 秒只是故障保护上限。
+
+## 线程与故障
+
+- 每个 WASAPI COM 客户端在所属 STA 音频线程创建、使用与释放，不跨线程搬移接口。
+- Windows MMCSS Audio 调度为采集与输出线程提供调度提示；推理不运行在设备事件线程上。
+- FIFO 同步采用短临界区，不使用无界任务队列。核心是软实时 .NET 程序，存在 GC 和调度抖动，不宣称硬实时或零分配。
+- 设备打开失败、超过 2 秒无音频事件、推理异常、FIFO 满均触发统一故障状态并取消所有线程。输出默认填零；模型异常不将未处理声音作为成功结果继续传输。
+- 采集间断计数包括驱动报告的 discontinuity，当前不自动重置模型。输出欠载填零并重新积攒启动储备。频繁间断或欠载需要排查设备/负载，不代表音质正常。
+- 速率补偿按输出队列水位轻微调整，不等同专业异步采样率转换器；长期/跨设备测试仍需完成。
+
+## 文件职责
+
+| 文件 | 职责 |
+|---|---|
+| `src/NativeAudio.cs` | COM 契约、设备枚举、端点、PCM 编解码 |
+| `src/Signal.cs` | FIFO、FIR、阶段契约、串联、增益限幅 |
+| `src/AudioEngine.cs` | 线程、启动/停止、队列、指标、故障 |
+| `src/ModelWorker.cs` | 可选模型进程生命周期与协议 |
+| `workers/model_worker.py` | 模型适配器和串联 |
+| `src/MainForm.cs` | 中文控制台及设备/模型状态 |
+| `tests/` | 核心、协议、可选本机设备冒烟测试 |
+
+## 视觉约定
+
+当前精简界面的颜色、字体、排布、电平和监听约定见 [COMPACT-UI.md](COMPACT-UI.md)，独立运行时与解释器选择见 [PORTABLE.md](PORTABLE.md)。状态和电平均来自实际音频数据，不绘制随机波形或虚构降噪分数。系统控件保留键盘焦点与标准可访问名称。
+
+## 启动自检优化
+
+GUI 在依赖检查后先要求用户确认麦克风；AudioStartupTest.SelectedInput 只匹配该端点 ID，主界面精确保留。AudioObservation 对首个不合格窗口仅允许一次 0.5 秒恢复及 2.5 秒重查，不加载第二份模型。AudioFailure 按阶段/错误类型/HRESULT 提供中英文提示。DriverInstallState 将本次估计开机内的待就绪/需重启记录持久化，具体规则见 STARTUP-INSTALL.md。所有自检输出仍为静音，常规音频算法及模型参数不变。

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="#1666C5" stroke-width="7" stroke-linecap="round">
+  <title>KeepQuiet 胶囊音波</title>
+  <rect x="8" y="29" width="104" height="62" rx="31" stroke-width="8"/>
+  <line x1="34" y1="55" x2="34" y2="65"/>
+  <line x1="47" y1="48" x2="47" y2="72"/>
+  <line x1="60" y1="40" x2="60" y2="80"/>
+  <line x1="73" y1="48" x2="73" y2="72"/>
+  <line x1="86" y1="55" x2="86" y2="65"/>
+</svg>

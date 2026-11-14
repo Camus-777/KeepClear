@@ -1,0 +1,45 @@
+KeepQuiet 0.3.0 · Windows x64 独立运行包
+
+1. 将整个文件夹解压到可写目录，双击 KeepQuiet.exe。
+   不要只复制 EXE，也不要直接在压缩包内运行。
+   启动先检查运行环境、模型文件和驱动；之后请先选择麦克风并确认开启、未静音，点击“开始自检”。
+   模型加载后观察约 2.5 秒；短暂卡顿可额外恢复观察一次。进入主界面后沿用确认过的麦克风。
+   如果缺少 VB-CABLE，会自动调用内置安装程序，请确认 Windows 管理员授权。
+   安装后最多等待约 20 秒；可用即继续。尚未就绪会保留状态，重新检查不会重复安装。
+   可等待并重新检查，或点击“重启电脑”确认；明确需重启时先重启，再打开软件。
+2. 输入选真实麦克风，虚拟输出选 CABLE Input。
+3. 点击启动，等待“降噪中”；游戏或通话麦克风选 CABLE Output。
+4. 监听选择耳机，运行后才能开启。首次运行默认为英文，右上角可切换中英文并记住选择。
+   依赖检查未通过的提示界面也可在右上角切换语言，下次启动沿用选择。
+5. 点击关闭按钮会隐藏到托盘，降噪和已开启的监听继续运行。
+   单击托盘图标或重新打开程序恢复窗口；彻底退出请右键托盘图标，选择“退出”。
+
+窗口固定为当前大小。同一 Windows 用户/会话只运行一个界面实例。
+
+已包含：Python 运行时、Alkove Focus/Cue、Denoiser DNS48、CPU 推理依赖。
+无需安装 Python、pip、PyTorch 或 CUDA；正常推理无需联网。
+系统需要 Windows 10/11 x64、.NET Framework 4.8。
+基础版 VB-CABLE 官方原包已内置，无需单独下载；缺失/不完整时尝试一次安装，健康的不同版本可直接用。
+驱动已装但未启用时，请在 Windows 声音设置启用。取消管理员授权后，可手动重试。
+VB-CABLE 来自 VB-Audio Software：https://www.vb-cable.com/
+它是 Donationware，欢迎支持作者：https://shop.vb-audio.com/en/win-apps/11-vb-cable.html
+
+保留 runtime、models、workers、third_party 等目录结构。
+如果包内文件被删除/损坏，请重新解压完整运行包；程序不会从不明来源安装 Python 库。
+设置仍保存在当前用户的 LocalAppData/KeepQuiet/settings.xml。
+移动整个文件夹后会自动使用新位置内的 runtime/python.exe。
+
+需要检查模型能否加载时，可在 PowerShell 运行：
+  .\KeepQuiet.exe --self-test "$PWD\self-test.txt"
+等待进程退出后查看 self-test.txt；此检查只使用合成音，不打开麦克风。
+
+第三方许可见 THIRD-PARTY.md 和各依赖自带 LICENSE/NOTICE。
+Denoiser 使用 CC BY-NC 4.0，含非商业限制。
+Python 3.12.10 用于复现当前已验证的模型环境；更新维护方案见 docs/PORTABLE.md。
+
+静音自检不向通话发送本软件采集的人声，不要求用户说话。系统可识别静音会提示；物理开关造成全零输入时无法确认开关状态。
+错误诊断日志：%LOCALAPPDATA%/KeepQuiet/logs，不包含录音。
+
+所选麦克风断开时请重新选择，软件不会替换为其他设备。权限、占用、断开、模型及处理速度等问题会分别提示。
+
+点击“开始自检”后 KeepQuiet 动画从头播放，打字约 2.6 秒；检查尚未结束时光标继续闪烁。
