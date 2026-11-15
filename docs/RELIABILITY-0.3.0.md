@@ -16,4 +16,4 @@
 
 逐设备隔离查询失败，可选显示信息读取失败不丢弃已确认身份。与基础驱动关联的硬件/服务/状态错误保留为检测失败；无关设备错误不阻断修复。完整规则见 [启动检查与驱动安装](STARTUP-INSTALL.md)。
 
-两级模型、推理参数、增益/限幅、重采样算法和播放缓冲策略保持原样。当前检查见 [VALIDATION.md](VALIDATION.md)，维护条目见 [MAINTENANCE-20261115.md](MAINTENANCE-20261115.md)，早期测量见 [历史记录](HISTORICAL-VALIDATION.md)。
+两级模型、推理参数、增益/限幅、重采样算法和播放缓冲策略保持原样。当前检查见 [VALIDATION.md](VALIDATION.md)，维护条目见 [MAINTENANCE-20261115.md](MAINTENANCE-20261115.md)。

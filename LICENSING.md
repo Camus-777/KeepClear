@@ -1,14 +1,14 @@
 # Licensing / 许可范围
 
-The original KeepQuiet implementation, project documentation and artwork are
+The original KeepClear implementation, project documentation and artwork are
 licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/).
-The complete legal text is in [LICENSE](LICENSE). Attribution: **KeepQuiet contributors**.
+The complete legal text is in [LICENSE](LICENSE). Attribution: **KeepClear contributors**.
 When redistributing, retain the attribution and license information and identify changes.
 
 自研代码、项目文档与图标使用 CC BY-NC 4.0（署名—非商业性使用 4.0 国际许可协议）。
-署名为 KeepQuiet contributors；发布修改版时保留署名、许可说明，并标明修改。
+署名为 KeepClear contributors；发布修改版时保留署名、许可说明，并标明修改。
 
-This applies only to material the KeepQuiet project is entitled to license.
+This applies only to material the KeepClear project is entitled to license.
 It does not relicense the following separately licensed components:
 
 | Component | License / source of terms |

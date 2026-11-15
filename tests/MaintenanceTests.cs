@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Globalization;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class MaintenanceTests
     {

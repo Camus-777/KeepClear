@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class StartupTests
     {
@@ -123,7 +123,7 @@ namespace KeepQuiet
                 return 3010; // A test callback never executes the installer.
             });
             check(request && code == 3010, "original embedded package extracts intact; installation uses Windows elevation");
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("KeepQuiet.VBCable.zip"))
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("KeepClear.VBCable.zip"))
                 check(stream != null && VbCableInstaller.Hash(stream) == VbCableInstaller.ArchiveHash, "embedded original driver ZIP matches pinned SHA256");
         }
 
@@ -385,7 +385,7 @@ namespace KeepQuiet
                         throw new Exception("A fast audio check skipped the replayed typing animation");
                     Pump(() => promoted, 5000);
                     if (replay.ElapsedMilliseconds < 3100)
-                        throw new Exception("Run test did not replay the 2.6-second KeepQuiet typing animation");
+                        throw new Exception("Run test did not replay the 2.6-second KeepClear typing animation");
                     var savedChoice = AppSettings.Load(path);
                     if (form.Result.InputId != "mic-b" || savedChoice.InputId != "mic-b" || savedChoice.OutputId != "saved-cable" || savedChoice.GainDb != 5)
                         throw new Exception("Confirmed microphone did not persist through successful test");
@@ -618,7 +618,7 @@ namespace KeepQuiet
 
         private static void Transition(string directory)
         {
-            string key = "KeepQuiet.StartupTest." + Guid.NewGuid().ToString("N");
+            string key = "KeepClear.StartupTest." + Guid.NewGuid().ToString("N");
             bool canProceed = false;
             var preferences = new AppSettings
             {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     public sealed class EngineOptions
     {
@@ -72,9 +72,9 @@ namespace KeepQuiet
                     throw new ObjectDisposedException("AudioEngine");
                 if (cancellation.IsCancellationRequested || Interlocked.Exchange(ref started, 1) != 0)
                     throw new InvalidOperationException("音频引擎只能启动一次。");
-                processThread = Launch(ProcessLoop, "KeepQuiet processing");
-                renderThread = Launch(RenderLoop, "KeepQuiet WASAPI render");
-                captureThread = Launch(CaptureLoop, "KeepQuiet WASAPI capture");
+                processThread = Launch(ProcessLoop, "KeepClear processing");
+                renderThread = Launch(RenderLoop, "KeepClear WASAPI render");
+                captureThread = Launch(CaptureLoop, "KeepClear WASAPI capture");
             }
         }
 

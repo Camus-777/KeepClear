@@ -122,12 +122,13 @@ def main():
     # Explicit relative paths; do not import site, .pth files, user packages or registry paths.
     (runtime / "python312._pth").write_text("python312.zip\n.\nLib/site-packages\n", encoding="ascii")
     packages, omitted_bytes, cpp_source = copy_runtime_packages(output)
-    for name in ["KeepQuiet.exe", "KeepQuiet.exe.config"]:
+    for name in ["KeepClear.exe", "KeepClear.exe.config"]:
         shutil.copy2(args.application_dir.resolve() / name, output / name)
     shutil.copytree(ROOT / "workers", output / "workers", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     shutil.copytree(ROOT / "third_party", output / "third_party", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     model_manifest = json.loads((ROOT / "models" / "MANIFEST.json").read_text())
     (output / "models").mkdir()
+    shutil.copy2(ROOT / "models" / "README.md", output / "models" / "README.md")
     shutil.copy2(ROOT / "models" / "MANIFEST.json", output / "models" / "MANIFEST.json")
     for key in ["alkove", "cue", "denoiser"]:
         entry = model_manifest[key]
@@ -139,16 +140,28 @@ def main():
         shutil.copy2(source, target)
     shutil.copytree(ROOT / "docs", output / "docs")
     shutil.copytree(ROOT / "assets", output / "assets")
-    for name in ["README.md", "README.zh-CN.md", "THIRD-PARTY.md", "requirements-models.lock.txt", "LICENSE", "NOTICE", "LICENSING.md", "CHANGELOG.md"]:
+    for name in ["README.md", "README.zh-CN.md", "QUICKSTART.txt", "THIRD-PARTY.md", "requirements-models.lock.txt", "LICENSE", "NOTICE", "LICENSING.md", "CHANGELOG.md"]:
         shutil.copy2(ROOT / name, output / name)
     shutil.copy2(ROOT / "docs" / "PORTABLE-QUICKSTART.txt", output / "开始使用.txt")
     manifest = {
-        "format": 1, "application": "KeepQuiet", "version": "0.3.0", "architecture": "Windows x64",
+        "format": 1, "application": "KeepClear", "version": "0.3.0", "architecture": "Windows x64",
         "python": {"version": PYTHON_VERSION, "source": EMBED_URL, "sha256": EMBED_SHA},
         "packages": packages, "omitted_build_bytes": omitted_bytes,
         "cpp_runtime_alias_source": cpp_source,
         "prerequisites": ["Windows 10/11 x64", ".NET Framework 4.8", "Windows administrator approval if VB-CABLE is missing"],
-        "bundled_vbcable": {"resource": "KeepQuiet.VBCable.zip", "package": "VBCABLE_Driver_Pack46.zip", "sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90", "origin": "https://vb-audio.com/Cable/"},
+        "bundled_vbcable": {"resource": "KeepClear.VBCable.zip", "package": "VBCABLE_Driver_Pack46.zip", "sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90", "origin": "https://vb-audio.com/Cable/"},
+        "publication": {
+            "date": "2026-11-15", "release_tag": "v0.3.0", "original_project_license": "CC-BY-NC-4.0",
+            "copyright_notice": "NOTICE",
+            "changes": "First public KeepClear release with KeepClear-only settings and installation state, and regular verified CABLE Input preference. Original model weights, runtime libraries and VB-CABLE driver archive retained.",
+        },
+        "startup_audio_check": {
+            "gui_each_primary_startup": True, "requires_microphone_confirmation": True,
+            "automatic_microphone_fallback": False, "silent_render": True,
+            "observation_seconds": 2.5, "max_recovery_windows": 1, "recovery_settle_seconds": 0.5,
+            "driver_endpoint_wait_seconds": 20, "persistent_driver_pending_state": True,
+            "text_logs": "%LOCALAPPDATA%/KeepClear/logs",
+        },
         "files": {p.relative_to(output).as_posix(): sha256(p) for p in sorted(output.rglob("*")) if p.is_file()},
     }
     (output / "PORTABLE.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

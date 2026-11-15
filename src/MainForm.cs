@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class Palette
     {
@@ -167,7 +167,7 @@ namespace KeepQuiet
             english = settings.Language == "en";
             AutoScaleMode = AutoScaleMode.Dpi;
             Font = new Font("Microsoft YaHei UI", 9);
-            Text = "KeepQuiet";
+            Text = "KeepClear";
             FormBorderStyle = FormBorderStyle.FixedSingle;
             ClientSize = new Size(480, 456);
             MinimumSize = Size;
@@ -205,7 +205,7 @@ namespace KeepQuiet
                 Size = new Size(440, 48)
             };
             header.Controls.Add(new PictureBox { Image = Icon.ToBitmap(), Location = new Point(0, 2), Size = new Size(32, 32), SizeMode = PictureBoxSizeMode.Zoom, TabStop = false });
-            header.Controls.Add(new Label { Text = "KeepQuiet", Font = new Font(Font.FontFamily, 20, FontStyle.Bold), Location = new Point(40, -2), AutoSize = true });
+            header.Controls.Add(new Label { Text = "KeepClear", Font = new Font(Font.FontFamily, 20, FontStyle.Bold), Location = new Point(40, -2), AutoSize = true });
             StyleButton(language, false);
             language.Size = new Size(72, 30);
             language.Location = new Point(368, 2);
@@ -311,7 +311,7 @@ namespace KeepQuiet
                 await ExitApplication();
             };
             tray.Icon = Icon;
-            tray.Text = "KeepQuiet";
+            tray.Text = "KeepClear";
             tray.ContextMenuStrip = trayMenu;
             tray.Visible = true;
             tray.MouseClick += delegate (object sender, MouseEventArgs args)
@@ -583,7 +583,8 @@ namespace KeepQuiet
                     else if (String.IsNullOrEmpty(device.IdentityError))
                         monitorDevice.Items.Add(device);
                 SelectDevice(input, sourceId, String.IsNullOrEmpty(sourceId));
-                SelectDevice(output, outputId);
+                var preferredOutput = AudioStartupTest.ChooseOutput(output.Items.Cast<AudioDevice>().ToArray(), outputId);
+                SelectDevice(output, preferredOutput == null ? "" : preferredOutput.Id, false);
                 SelectDevice(monitorDevice, monitorId);
                 noticeKey = input.SelectedItem == null || output.SelectedItem == null ? "devices" : "";
             }
@@ -784,16 +785,16 @@ namespace KeepQuiet
             if (newFailure)
             {
                 if (Visible)
-                    MessageBox.Show(this, AudioFailure.Title(snapshot.FailureKind, english) + "\n\n" + AudioFailure.Advice(snapshot.FailureKind, english) + "\n\n" + T("诊断日志：", "Diagnostic logs: ") + Diagnostics.Folder, "KeepQuiet", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(this, AudioFailure.Title(snapshot.FailureKind, english) + "\n\n" + AudioFailure.Advice(snapshot.FailureKind, english) + "\n\n" + T("诊断日志：", "Diagnostic logs: ") + Diagnostics.Folder, "KeepClear", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 else
-                    tray.ShowBalloonTip(6000, "KeepQuiet", T("处理已停止，请打开窗口查看错误。", "Processing stopped. Open the window to view the error."), ToolTipIcon.Error);
+                    tray.ShowBalloonTip(6000, "KeepClear", T("处理已停止，请打开窗口查看错误。", "Processing stopped. Open the window to view the error."), ToolTipIcon.Error);
             }
         }
 
         private void ShowFailure(Exception ex)
         {
             Diagnostics.Failure("main-ui", ex);
-            MessageBox.Show(this, T("操作未完成，请检查设备和本地模型文件。\n\n", "Could not complete the operation. Check devices and local model files.\n\n") + ex.Message + "\n\n" + T("诊断日志：", "Diagnostic logs: ") + Diagnostics.Folder, "KeepQuiet", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, T("操作未完成，请检查设备和本地模型文件。\n\n", "Could not complete the operation. Check devices and local model files.\n\n") + ex.Message + "\n\n" + T("诊断日志：", "Diagnostic logs: ") + Diagnostics.Folder, "KeepClear", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         private void SaveSettings()

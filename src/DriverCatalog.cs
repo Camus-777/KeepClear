@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal sealed class DriverNode
     {
@@ -73,7 +73,7 @@ namespace KeepQuiet
         internal static readonly Lazy<DriverIdentity> Identity = new Lazy<DriverIdentity>(ReadIdentity);
         private static DriverIdentity ReadIdentity()
         {
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("KeepQuiet.VBCable.zip"))
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("KeepClear.VBCable.zip"))
             {
                 if (stream == null || VbCableInstaller.Hash(stream) != VbCableInstaller.ArchiveHash)
                     throw new InvalidDataException("Bundled driver archive checksum mismatch.");

@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal sealed class StartupForm : Form
     {
@@ -81,7 +81,7 @@ namespace KeepQuiet
                 preferences.InputId = id;
                 preferences.Save();
             });
-            this.confirmRestart = confirmRestart ?? (() => MessageBox.Show(this, T("确定现在重新启动 Windows 吗？请先保存其他程序中的工作。", "Restart Windows now? Save your work in other applications first."), "KeepQuiet", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes);
+            this.confirmRestart = confirmRestart ?? (() => MessageBox.Show(this, T("确定现在重新启动 Windows 吗？请先保存其他程序中的工作。", "Restart Windows now? Save your work in other applications first."), "KeepClear", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes);
             this.restartWindows = restartWindows ?? delegate
             {
                 // A zero timeout without /f lets Windows handle applications with unsaved work.
@@ -93,7 +93,7 @@ namespace KeepQuiet
             };
             AutoScaleMode = AutoScaleMode.Dpi;
             Font = new Font("Microsoft YaHei UI", 9);
-            Text = "KeepQuiet";
+            Text = "KeepClear";
             ClientSize = new Size(480, 280);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
@@ -163,7 +163,7 @@ namespace KeepQuiet
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, T("无法保存语言设置：", "Unable to save language preference: ") + ex.Message, "KeepQuiet", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(this, T("无法保存语言设置：", "Unable to save language preference: ") + ex.Message, "KeepClear", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
@@ -428,7 +428,7 @@ namespace KeepQuiet
                 return;
             var completed = result;
             status.Text = completed.Ready ? T("检查完成", "Ready") : completed.Status == "restart-required" ? T("安装程序已结束，请重新启动 Windows", "Setup finished. Restart Windows to continue") : completed.Status == "inactive-driver" ? T("虚拟声卡已安装，但当前不可用", "VB-CABLE is installed but unavailable") : completed.Status == "incomplete-driver" ? T("VB-CABLE 安装不完整", "VB-CABLE installation is incomplete") : completed.Status == "installer-busy" ? T("VB-CABLE 安装程序正在运行", "VB-CABLE setup is already running") : completed.Status == "driver-detection-failed" ? T("无法确认虚拟声卡的设备身份", "Unable to verify virtual audio device identity") : completed.Status == "driver-pending" ? T("安装已结束，虚拟声卡尚未就绪", "Setup finished; VB-CABLE is not ready yet") : completed.Status == "audio-failed" ? AudioFailure.Title(completed.FailureKind, english) : completed.Status == "cancelled" ? T("安装未获授权，等待重新检查", "Installation cancelled. Waiting to retry") : completed.Status == "missing-driver" ? T("缺少依赖：VB-CABLE 虚拟声卡", "Missing dependency: VB-CABLE") : completed.Status == "missing-files" || completed.Status == "damaged-files" ? T("程序文件缺失或损坏", "Application files are missing or damaged") : T("依赖检查未通过", "Dependency check failed");
-            detail.Text = completed.Ready ? "" : completed.Status == "restart-required" ? T("点击“重启电脑”，或退出后自行重启；重启后再打开 KeepQuiet。", "Choose Restart PC or restart manually, then open KeepQuiet.") : completed.Status == "inactive-driver" ? T("请在 Windows 声音设置或设备管理器启用 VB-CABLE。", "Enable VB-CABLE in Windows sound settings or Device Manager.") : completed.Status == "incomplete-driver" ? T("请重新检查以使用内置安装包修复。", "Retry to install the bundled driver package.") : completed.Status == "installer-busy" ? T("等待安装完成后点击重新检查。", "Wait for setup to finish, then retry.") : completed.Status == "driver-detection-failed" ? T("请重新检查；点击此处打开诊断日志。", "Retry detection. Click here to open diagnostic logs.") : completed.Status == "driver-pending" ? T("重新检查会继续等待，不会重复安装。也可重启电脑。", "Retry waits without reinstalling. You may also restart Windows.") : completed.Status == "missing-files" || completed.Status == "damaged-files" ? T("请重新解压完整运行包。缺失项：", "Extract the complete package again. File: ") + completed.Detail : completed.Status == "cancelled" ? T("可点击“重新检查”再次请求管理员授权。", "Retry to request administrator permission again.") : completed.Detail;
+            detail.Text = completed.Ready ? "" : completed.Status == "restart-required" ? T("点击“重启电脑”，或退出后自行重启；重启后再打开 KeepClear。", "Choose Restart PC or restart manually, then open KeepClear.") : completed.Status == "inactive-driver" ? T("请在 Windows 声音设置或设备管理器启用 VB-CABLE。", "Enable VB-CABLE in Windows sound settings or Device Manager.") : completed.Status == "incomplete-driver" ? T("请重新检查以使用内置安装包修复。", "Retry to install the bundled driver package.") : completed.Status == "installer-busy" ? T("等待安装完成后点击重新检查。", "Wait for setup to finish, then retry.") : completed.Status == "driver-detection-failed" ? T("请重新检查；点击此处打开诊断日志。", "Retry detection. Click here to open diagnostic logs.") : completed.Status == "driver-pending" ? T("重新检查会继续等待，不会重复安装。也可重启电脑。", "Retry waits without reinstalling. You may also restart Windows.") : completed.Status == "missing-files" || completed.Status == "damaged-files" ? T("请重新解压完整运行包。缺失项：", "Extract the complete package again. File: ") + completed.Detail : completed.Status == "cancelled" ? T("可点击“重新检查”再次请求管理员授权。", "Retry to request administrator permission again.") : completed.Detail;
             if (!completed.Ready)
             {
                 errors.SetToolTip(detail, completed.Status == "select-microphone" ? "" : (completed.Detail ?? "") + "\n" + Diagnostics.Folder);
@@ -482,7 +482,7 @@ namespace KeepQuiet
             g.SmoothingMode = SmoothingMode.AntiAlias;
             using (var format = (StringFormat)StringFormat.GenericTypographic.Clone())
             {
-                string text = "KeepQuiet";
+                string text = "KeepClear";
                 float width = g.MeasureString(text, brand, PointF.Empty, format).Width;
                 float x = (ClientSize.Width - width - 12) / 2f, y = (result != null && result.ChooseMicrophone ? 80 : ClientSize.Height * 0.47f) - brand.GetHeight(g) * 0.5f;
                 double elapsed = clock.Elapsed.TotalSeconds, progress = Math.Max(0, Math.Min(1, (elapsed - 0.28) / typingDuration));

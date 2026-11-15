@@ -3,7 +3,7 @@ using System.Security.Principal;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     // One GUI per Windows user/session, shared across portable folders and versions.
     internal sealed class SingleInstance : IDisposable
@@ -15,7 +15,7 @@ namespace KeepQuiet
         private WindowsFormsSynchronizationContext dispatcher;
         public bool IsPrimary { get; private set; }
 
-        public SingleInstance() : this("KeepQuiet." + WindowsIdentity.GetCurrent().User.Value)
+        public SingleInstance() : this("KeepClear." + WindowsIdentity.GetCurrent().User.Value)
         {
         }
 
@@ -68,7 +68,7 @@ namespace KeepQuiet
             })
             {
                 IsBackground = true,
-                Name = "KeepQuiet activation"
+                Name = "KeepClear activation"
             };
             listener.Start();
         }

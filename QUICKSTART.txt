@@ -1,0 +1,20 @@
+KeepClear v0.3.0 - Windows x64
+Chinese name: 保持清晰
+
+1. Extract the entire archive and run KeepClear.exe. Do not copy only the EXE or run it inside the ZIP. Requires Windows 10/11 x64 and .NET Framework 4.8.
+2. Select your microphone, make sure it is enabled and unmuted, then click Run test. The silent startup test checks the actual dual-model/VB-CABLE stream without saving microphone audio.
+3. The main window retains the confirmed microphone. When no valid output selection is saved, the regular CABLE Input endpoint is preferred; valid saved choices are retained.
+4. Click Start, then select CABLE Output as the microphone in your game or calling app.
+5. For local monitoring, select your headphones and enable Monitor after processing is running.
+6. Closing the window hides it to the tray. Left-click the tray icon to restore the window; right-click and select Exit to quit.
+
+The first launch defaults to English. Your selected language is saved. Settings and driver-installation state are managed only in the KeepClear directory under LocalAppData.
+Inference runs locally and offline. Python, CPU inference dependencies and model weights are included. KeepClear does not save microphone audio to disk or upload it.
+
+If VB-CABLE is missing or incomplete, KeepClear requests administrator approval to run the bundled original installer. Initialization may take time; Retry waits without repeating a confirmed pending installation. Restart PC requires confirmation. A disabled device must be enabled in Windows.
+Make sure the microphone's physical switch and audio interface are not muted. Silent startup testing does not prove subjective audio quality or which microphone your game has selected.
+
+Text diagnostics: %LOCALAPPDATA%/KeepClear/logs.
+For the Chinese quick start, read 开始使用.txt. Read LICENSE, NOTICE, LICENSING.md and THIRD-PARTY.md for license information.
+VB-CABLE by VB-Audio is donationware: https://www.vb-cable.com/
+Support its author: https://shop.vb-audio.com/en/win-apps/11-vb-cable.html

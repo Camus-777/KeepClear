@@ -4,9 +4,9 @@
 
 ## 本机直接使用
 
-普通用户打开完整独立包中的 `KeepQuiet.exe`；开发者也可打开 `dist/KeepQuiet.exe`。两级模型固定全开，按 Alkove → Denoiser 运行。选择真实麦克风和 CABLE Input，点击“启动”。游戏/通话里选择 CABLE Output 作为麦克风。
+普通用户打开完整独立包中的 `KeepClear.exe`；开发者也可打开 `dist/KeepClear.exe`。两级模型固定全开，按 Alkove → Denoiser 运行。选择真实麦克风和 CABLE Input，点击“启动”。游戏/通话里选择 CABLE Output 作为麦克风。
 
-当前 `release/KeepQuiet-0.3.0-win-x64` 已包含独立 Python、模型和运行依赖，详见 [PORTABLE.md](PORTABLE.md)。普通构建生成的 dist 仍为开发输出，只有 dist 时需要项目 .venv 或显式配置的 Python，不能把它当作完整独立包。
+当前 `release/KeepClear-0.3.0-win-x64` 已包含独立 Python、模型和运行依赖，详见 [PORTABLE.md](PORTABLE.md)。普通构建生成的 dist 仍为开发输出，只有 dist 时需要项目 .venv 或显式配置的 Python，不能把它当作完整独立包。
 
 ## 固定版本
 
@@ -40,7 +40,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./setup-models.ps1
 models/MANIFEST.json
 third_party/denoiser/denoiser/    # 未改动的上游模块
 dist/
-  KeepQuiet.exe
+  KeepClear.exe
   workers/model_worker.py
   third_party/denoiser/denoiser/
   models/alkove/alkove-focus-1-preview.alk
@@ -62,8 +62,8 @@ dist/
 powershell -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Test
 # 需要 artifacts/fixtures/tts-clean.wav 本地 16 kHz mono PCM16 测试语音
 ./.venv/Scripts/python.exe ./tools/validate_models.py
-./dist/KeepQuiet.Tests.exe --models ./artifacts/model-pipe.txt
-./dist/KeepQuiet.Tests.exe --hardware-models ./artifacts/hardware-models.txt
+./dist/KeepClear.Tests.exe --models ./artifacts/model-pipe.txt
+./dist/KeepClear.Tests.exe --hardware-models ./artifacts/hardware-models.txt
 ```
 
 `--hardware-models` 会实际打开麦克风并输出至 VB-CABLE；三次运行分别约 30/4/4 秒。测试不保存用户麦克风音频。验证结果和限制见 [VALIDATION.md](VALIDATION.md)。
@@ -74,4 +74,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Test
 - [Denoiser](https://github.com/facebookresearch/denoiser)：CC BY-NC 4.0，包含非商业限制；原始 LICENSE 与来源保留在 third_party。
 - [PyTorch CPU 分发](https://download.pytorch.org/whl/cpu)：运行环境保留其自带许可。
 
-商业发布前需要处理 Denoiser 授权；不可将这些模型、权重、上游推理模块计为 KeepQuiet 原创内容。自研部分采用 CC BY-NC 4.0，第三方许可分别保留。
+商业发布前需要处理 Denoiser 授权；不可将这些模型、权重、上游推理模块计为 KeepClear 原创内容。自研部分采用 CC BY-NC 4.0，第三方许可分别保留。

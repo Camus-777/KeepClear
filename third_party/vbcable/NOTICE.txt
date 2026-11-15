@@ -4,7 +4,7 @@ VB-CABLE is donationware. All contributions are welcome.
 Support / license: https://shop.vb-audio.com/en/win-apps/11-vb-cable.html
 Distribution terms: https://vb-audio.com/Services/licensing.htm
 
-KeepQuiet includes the original, unmodified base VB-CABLE package:
+KeepClear includes the original, unmodified base VB-CABLE package:
 VBCABLE_Driver_Pack46.zip
 SHA256 bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90
 Downloaded from the official HTTPS download on 2026-11-14.
@@ -16,6 +16,6 @@ Professional/organizational deployments have additional licensing conditions.
 Additional cables A+B and C+D are not included.
 
 The original ZIP, including its readme/license and signed binaries, is embedded
-unchanged in KeepQuiet. Its older readme text and the publisher's current public
+unchanged in KeepClear. Its older readme text and the publisher's current public
 distribution terms are retained by reference; no ownership of the driver is claimed.
 Driver installation still needs Windows administrator consent and a restart.

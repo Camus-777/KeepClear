@@ -3,13 +3,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class Diagnostics
     {
         private static readonly object gate = new object();
-        internal static readonly string Folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeepQuiet", "logs");
-        private static readonly string file = Path.Combine(Folder, "KeepQuiet-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Process.GetCurrentProcess().Id + ".log");
+        internal static readonly string Folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeepClear", "logs");
+        private static readonly string file = Path.Combine(Folder, "KeepClear-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Process.GetCurrentProcess().Id + ".log");
         internal static void Write(string stage, string message)
         {
             // Diagnostics must never prevent startup, audio cleanup, or exit. No PCM is logged.

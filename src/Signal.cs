@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     // Elapsed-time ballistics: identical motion at different UI refresh rates.
     internal sealed class MeterEnvelope

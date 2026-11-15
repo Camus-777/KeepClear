@@ -36,7 +36,7 @@ class AlkoveStage:
         import numpy as np
         import alkove
         if alkove.__version__ != "0.4.0":
-            raise RuntimeError("KeepQuiet 此版本需要 alkove 0.4.0，请运行 setup-models.ps1")
+            raise RuntimeError("KeepClear 此版本需要 alkove 0.4.0，请运行 setup-models.ps1")
         if not os.path.isdir(folder):
             raise FileNotFoundError("请将本地 Alkove .alk 文件放入 models/alkove")
         self.np = np

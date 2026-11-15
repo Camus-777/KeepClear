@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
-[xml]$vector = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'KeepQuiet.svg') -Raw -Encoding UTF8
+[xml]$vector = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'KeepClear.svg') -Raw -Encoding UTF8
 $sizes = @(16,20,24,32,48,64,128,256)
 $images = @()
 foreach ($size in $sizes) {
@@ -37,11 +37,11 @@ foreach ($size in $sizes) {
         $final.DrawImage($canvas, 0, 0, $size, $size)
         $bitmap.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
         $images += ,$stream.ToArray()
-        if ($size -eq 256) { $bitmap.Save((Join-Path $PSScriptRoot 'KeepQuiet.png'), [System.Drawing.Imaging.ImageFormat]::Png) }
+        if ($size -eq 256) { $bitmap.Save((Join-Path $PSScriptRoot 'KeepClear.png'), [System.Drawing.Imaging.ImageFormat]::Png) }
     }
     finally { $stream.Dispose(); $final.Dispose(); $bitmap.Dispose(); $pen.Dispose(); $graphics.Dispose(); $canvas.Dispose() }
 }
-$file = [System.IO.File]::Create((Join-Path $PSScriptRoot 'KeepQuiet.ico'))
+$file = [System.IO.File]::Create((Join-Path $PSScriptRoot 'KeepClear.ico'))
 $writer = [System.IO.BinaryWriter]::new($file)
 try {
     $writer.Write([uint16]0); $writer.Write([uint16]1); $writer.Write([uint16]$sizes.Count)

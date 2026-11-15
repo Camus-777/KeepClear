@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class SelfTest
     {

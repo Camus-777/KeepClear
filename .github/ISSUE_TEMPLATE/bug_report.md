@@ -1,6 +1,6 @@
 ---
 name: Bug report / 问题反馈
-about: Report a reproducible KeepQuiet problem
+about: Report a reproducible KeepClear problem
 title: ''
 labels: ''
 assignees: ''

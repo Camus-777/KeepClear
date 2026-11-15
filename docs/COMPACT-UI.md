@@ -4,7 +4,7 @@
 
 主界面客户端为 480 × 456 逻辑像素，Windows DPI 缩放后锁定外框尺寸。固定链路为 Alkove Focus → Denoiser DNS48；不提供模型开关、原声直通、声纹录入或增益滑块。
 
-设备区从上到下为输入麦克风、虚拟输出、监听设备。输入与刷新按钮等高对齐；其后为输入/输出电平、监听/启动、提示和状态。页头提供语言切换。启动页为白底黑字 KeepQuiet 与蓝色光标，麦克风选择和动画规则见 [启动检查](STARTUP-INSTALL.md)。
+设备区从上到下为输入麦克风、虚拟输出、监听设备。输入与刷新按钮等高对齐；其后为输入/输出电平、监听/启动、提示和状态。页头提供语言切换。启动页为白底黑字 KeepClear 与蓝色光标，麦克风选择和动画规则见 [启动检查](STARTUP-INSTALL.md)。
 
 背景 #F4F7FB，面板 #FFFFFF，正文 #182C3A，次要文字 #576C7C，蓝色 #1666C5，边线 #D6E0EA。使用 Microsoft YaHei UI：主界面品牌 20 pt，操作/设备文字 9 pt，提示 8 pt。
 
@@ -27,4 +27,4 @@
 
 无语言配置时默认英文。启动检查页和主界面共用 settings.xml，选择会保存，设备原名不翻译。语言切换不影响音频处理。旧 GainDb 继续读取，但界面不提供调整；旧模型开关节点在反序列化时忽略，下次保存不再写入。
 
-固定窗口和托盘规则见 [TRAY.md](TRAY.md)，当前验证见 [VALIDATION.md](VALIDATION.md)，早期测量见 [历史记录](HISTORICAL-VALIDATION.md)。
+固定窗口和托盘规则见 [TRAY.md](TRAY.md)，当前验证见 [VALIDATION.md](VALIDATION.md)。

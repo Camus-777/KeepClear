@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     public sealed class AudioDevice
     {
@@ -14,6 +14,7 @@ namespace KeepQuiet
         internal DriverNode Driver;
         internal string AdapterId;
         internal string IdentityError;
+        internal int FormFactor = -1;
         public bool IsCable
         {
             get
@@ -85,6 +86,8 @@ namespace KeepQuiet
         public ushort Type;
         [FieldOffset(8)]
         public IntPtr Pointer;
+        [FieldOffset(8)]
+        public uint UInt32;
     }
 
     [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -388,6 +391,28 @@ namespace KeepQuiet
                         {
                             Diagnostics.Failure("endpoint-name " + id, ex);
                         }
+
+                        // Optional ranking metadata; driver identity never depends on it.
+                        if (!capture && entry.IsCable && store != null)
+                            try
+                            {
+                                var key = new PropertyKey { Format = new Guid("1DA5D803-D492-4EDD-8C23-E0C0FFEE7F0E"), Id = 0 };
+                                PropVariant value;
+                                Check(store.GetValue(ref key, out value));
+                                try
+                                {
+                                    if (value.Type == 19) // VT_UI4, EndpointFormFactor.
+                                        entry.FormFactor = (int)value.UInt32;
+                                }
+                                finally
+                                {
+                                    PropVariantClear(ref value);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Diagnostics.Failure("endpoint-form-factor " + id, ex);
+                            }
 
                         return entry;
                     }

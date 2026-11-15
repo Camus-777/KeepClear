@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Xml.Serialization;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     public sealed class AppSettings
     {
@@ -13,7 +13,7 @@ namespace KeepQuiet
         {
             get
             {
-                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeepQuiet");
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeepClear");
             }
         }
 

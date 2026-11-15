@@ -6,7 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class Tests
     {
@@ -179,8 +179,9 @@ namespace KeepQuiet
                 StartupTests.Run(Check);
                 StartupOptimizationTests.Run(Check);
                 MaintenanceTests.Run(Check);
+                OutputSelectionTests.Run(Check);
                 ReliabilityTests.Run(Check);
-                string instanceKey = "KeepQuiet.Test." + Guid.NewGuid().ToString("N");
+                string instanceKey = "KeepClear.Test." + Guid.NewGuid().ToString("N");
                 string instanceReport = Path.Combine(Path.GetTempPath(), instanceKey + ".txt");
                 using (var instanceForm = new System.Windows.Forms.Form())
                 using (var primary = new SingleInstance(instanceKey))

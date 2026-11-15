@@ -1,6 +1,6 @@
 using System;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal enum AudioFailureKind
     {

@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     // One optional Python process owns BOTH model states in serial order.
     // Binary PCM travels over local anonymous pipes; stdout is never used for logs.

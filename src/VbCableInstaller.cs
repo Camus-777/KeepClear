@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal enum CableState
     {
@@ -71,10 +71,10 @@ namespace KeepQuiet
 
         internal static CableState Ensure(bool allowInstall, Action<string> progress)
         {
-            string record = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeepQuiet", "driver-setup", "install-state.xml");
+            string record = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeepClear", "driver-setup", "install-state.xml");
             if (!allowInstall)
                 return Ensure(false, progress, Probe, Install, 0, new DriverInstallState(record, DriverInstallState.BootUtc));
-            using (var mutex = new Mutex(false, @"Global\KeepQuiet.VBCABLE.Install.v1"))
+            using (var mutex = new Mutex(false, @"Global\KeepClear.VBCABLE.Install.v1"))
             {
                 bool held = false;
                 try
@@ -114,7 +114,7 @@ namespace KeepQuiet
 
         internal static string Extract(string parent)
         {
-            using (var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("KeepQuiet.VBCable.zip"))
+            using (var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream("KeepClear.VBCable.zip"))
             {
                 if (resource == null || Hash(resource) != ArchiveHash)
                     throw new InvalidDataException("Bundled VB-CABLE archive is missing or damaged.");
@@ -163,7 +163,7 @@ namespace KeepQuiet
 
         internal static int Install()
         {
-            string parent = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeepQuiet", "driver-setup");
+            string parent = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeepClear", "driver-setup");
             return Install(parent, delegate (ProcessStartInfo info)
             {
                 using (var process = Process.Start(info))

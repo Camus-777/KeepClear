@@ -4,7 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Xml;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     // Persists a successful/pending setup attempt across application exits, not across a Windows restart.
     internal sealed class DriverInstallState

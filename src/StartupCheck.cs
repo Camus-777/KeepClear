@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal sealed class StartupResult
     {

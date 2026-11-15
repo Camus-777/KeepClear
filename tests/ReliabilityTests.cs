@@ -7,7 +7,7 @@ using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class ReliabilityTests
     {

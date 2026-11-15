@@ -10,7 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class UiChecks
     {
@@ -223,7 +223,7 @@ namespace KeepQuiet
                     Application.DoEvents();
                     if (form.Visible || form.IsDisposed || form.ShowInTaskbar || !((NotifyIcon)Field(form, "tray")).Visible)
                         throw new Exception("Closing did not hide to the system tray");
-                    string instanceKey = "KeepQuiet.UiTest." + Guid.NewGuid().ToString("N");
+                    string instanceKey = "KeepClear.UiTest." + Guid.NewGuid().ToString("N");
                     string activationReport = Path.Combine(directory, (english ? "en" : "zh") + "-secondary.txt");
                     using (var instance = new SingleInstance(instanceKey))
                     {

@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     // Independent WASAPI endpoint/clock. A monitor failure cannot stop VB-CABLE.
     internal sealed class MonitorOutput : IDisposable
@@ -47,7 +47,7 @@ namespace KeepQuiet
             })
             {
                 IsBackground = true,
-                Name = "KeepQuiet local monitor"
+                Name = "KeepClear local monitor"
             };
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();

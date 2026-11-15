@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class Program
     {
@@ -57,7 +57,7 @@ namespace KeepQuiet
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.ThreadException += delegate (object sender, System.Threading.ThreadExceptionEventArgs e)
                 {
-                    MessageBox.Show(e.Exception.Message, "KeepQuiet：界面错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(e.Exception.Message, "KeepClear：界面错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 };
                 using (var context = new StartupContext())
                 {

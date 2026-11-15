@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class StartupOptimizationTests
     {

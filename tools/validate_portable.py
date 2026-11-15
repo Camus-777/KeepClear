@@ -135,7 +135,7 @@ def main():
     sandbox_parent.mkdir(parents=True, exist_ok=True)
     # The directory is intentionally left for review; no existing files are removed.
     sandbox = Path(tempfile.mkdtemp(prefix="独立包 空格 ", dir=sandbox_parent)).resolve()
-    moved = sandbox / "KeepQuiet moved"
+    moved = sandbox / "KeepClear moved"
     shutil.copytree(package, moved)
     trap = sandbox / "invalid-python"
     trap.mkdir()
@@ -153,14 +153,14 @@ def main():
     assert not marker.exists()
     report_path = sandbox / "self-test.txt"
     started = time.perf_counter()
-    tested = subprocess.run([str(moved / "KeepQuiet.exe"), "--self-test", str(report_path)],
+    tested = subprocess.run([str(moved / "KeepClear.exe"), "--self-test", str(report_path)],
                             env=environment, cwd=trap, capture_output=True, timeout=90, creationflags=creation)
     text = report_path.read_text(encoding="utf-8-sig") if report_path.exists() else tested.stderr.decode(errors="replace")
     if tested.returncode or "PASS;" not in text or str(moved / "runtime" / "python.exe") not in text:
         raise RuntimeError(text)
     assert not marker.exists()
     startup_path=sandbox / "startup-check.txt"
-    startup=subprocess.run([str(moved / "KeepQuiet.exe"),"--check-startup",str(startup_path)],
+    startup=subprocess.run([str(moved / "KeepClear.exe"),"--check-startup",str(startup_path)],
                            env=environment,cwd=trap,capture_output=True,timeout=90,creationflags=creation)
     startup_text=startup_path.read_text(encoding="utf-8-sig") if startup_path.exists() else ""
     if startup.returncode not in (0,1) or not any("status="+value in startup_text for value in ["ready","missing-driver","inactive-driver","incomplete-driver","restart-required","driver-detection-failed","driver-pending"]):

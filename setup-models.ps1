@@ -14,4 +14,4 @@ if ($LASTEXITCODE -ne 0) { throw 'Model dependency installation failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Model preparation or checksum verification failed.' }
 & (Join-Path $projectRoot 'build.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'Application build failed.' }
-Write-Host 'Ready: dist\KeepQuiet.exe (Alkove -> Denoiser). Runtime inference is offline.'
+Write-Host 'Ready: dist\KeepClear.exe (Alkove -> Denoiser). Runtime inference is offline.'

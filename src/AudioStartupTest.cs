@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
-namespace KeepQuiet
+namespace KeepClear
 {
     internal static class AudioStartupTest
     {
@@ -14,7 +14,11 @@ namespace KeepQuiet
 
         internal static AudioDevice ChooseOutput(AudioDevice[] devices, string saved)
         {
-            return devices.FirstOrDefault(d => d.Id == saved && d.IsCable) ?? devices.FirstOrDefault(d => d.IsCable);
+            var cable = devices.Where(d => !d.Capture && d.IsCable && String.IsNullOrEmpty(d.IdentityError)).ToArray();
+            return cable.FirstOrDefault(d => d.Id == saved)
+                ?? cable.FirstOrDefault(d => d.FormFactor == 1) // Speakers: the regular CABLE Input endpoint.
+                ?? cable.FirstOrDefault(d => d.FormFactor < 0 && (String.Equals(d.Name, "CABLE Input", StringComparison.OrdinalIgnoreCase) || (d.Name ?? "").StartsWith("CABLE Input (", StringComparison.OrdinalIgnoreCase)))
+                ?? cable.FirstOrDefault();
         }
 
         internal static bool MeetsThroughput(EngineSnapshot current, EngineSnapshot baseline, double seconds)
@@ -118,7 +122,7 @@ namespace KeepQuiet
                 thread = new Thread(() => Read(id))
                 {
                     IsBackground = true,
-                    Name = "KeepQuiet startup cable readback"
+                    Name = "KeepClear startup cable readback"
                 };
                 thread.SetApartmentState(ApartmentState.STA);
                 thread.Start();
