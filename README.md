@@ -41,7 +41,7 @@ Denoiser DNS48 — noise suppression
 VB-CABLE → game or calling app
 ```
 
-Alkove Focus prioritizes the voice closest to the microphone and suppresses more distant background speech. Denoiser DNS48 then reduces environmental noise. This uses proximity-based voice isolation rather than voiceprint enrollment; results depend on microphone placement, room acoustics, and the voices present.
+Alkove Focus prioritizes extracting speech from a speaker near the microphone and suppresses more distant background speech. Denoiser DNS48 then reduces environmental noise. This uses proximity-based voice isolation rather than voiceprint enrollment; results depend on microphone placement, room acoustics, and the voices present.
 
 All inference runs **100% locally and offline**. KeepQuiet does not save microphone audio to disk or upload it. The portable release bundles Python, CPU inference dependencies, Focus/Cue/DNS48 weights, and the original VB-CABLE installer—no separate Python, CUDA, or driver download is needed.
 
