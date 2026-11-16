@@ -25,6 +25,7 @@ class SerialChain:
         self.metrics = metrics
         self.report_at = time.perf_counter()
         self.stage_times = {}
+        self.cpu_at = time.process_time()
 
     def process(self, pcm):
         for stage in self.stages:
@@ -41,10 +42,21 @@ class SerialChain:
             if len(pcm) > MAX_SAMPLES or any(not math.isfinite(x) for x in pcm):
                 raise ValueError("model returned invalid PCM")
         if self.metrics and time.perf_counter() - self.report_at >= 1:
+            now = time.perf_counter()
+            cpu = time.process_time()
             report = {name: {"calls": v[0], "mean_ms": round(v[1] / v[0], 3), "max_ms": round(v[2], 3)} for name, v in self.stage_times.items()}
+            report["worker"] = {"wall_interval_ms": round((now - self.report_at) * 1000, 3),
+                "cpu_interval_ms": round((cpu - self.cpu_at) * 1000, 3)}
+            for stage in self.stages:
+                if isinstance(stage, DenoiserStage) and type(stage).__name__ in report:
+                    try:
+                        report[type(stage).__name__]["state"] = stage.diagnostic_state()
+                    except Exception as error:
+                        report[type(stage).__name__]["state_unavailable"] = type(error).__name__
             print("KC_METRIC " + json.dumps(report), file=sys.stderr, flush=True)
             self.stage_times.clear()
             self.report_at = time.perf_counter()
+            self.cpu_at = time.process_time()
         return pcm
 
 
@@ -109,6 +121,14 @@ class DenoiserStage:
         with self.torch.inference_mode():
             frame = self.torch.tensor(pcm, dtype=self.torch.float32).reshape(1, -1)
             return self.streamer.feed(frame)[0].tolist()
+
+    def diagnostic_state(self):
+        streamer = self.streamer
+        return {"pending_samples": int(streamer.pending.shape[-1]),
+            "pending_storage_bytes": streamer.pending.untyped_storage().nbytes(),
+            "lstm_elements": sum(t.numel() for t in (streamer.lstm_state or ())),
+            "conv_elements": sum(t.numel() for t in (streamer.conv_state or ())),
+            "frames": streamer.frames}
 
 
 def read_exact(stream, size):

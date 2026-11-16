@@ -48,6 +48,7 @@ namespace KeepClear
         private double nextLog, maxInputMs, maxOutputMs, maxCaptureGapMs, lastCaptureAt;
         private readonly GainLimiter gain = new GainLimiter();
         private Thread captureThread, processThread, renderThread;
+        private ModelWorker modelWorker;
         private string state = "准备中", error = "";
         private AudioFailureKind failureKind;
         private double inPeak, outPeak, processMs, renderQueuedMs, processingQueuedMs, resampleQueuedMs, renderSubmittingMs;
@@ -191,6 +192,9 @@ namespace KeepClear
                 Diagnostics.Write("audio-health", String.Format(System.Globalization.CultureInfo.InvariantCulture,
                     "elapsed_s={0:F2} input_ms={1:F2} output_ms={2:F2} input_high_ms={3:F2} output_high_ms={4:F2} capture_gap_max_ms={5:F2} input_rate={6} output_rate={7} blocks={8} underruns={9} discontinuities={10} recoveries={11} skipped_processed_samples={12} gc0={13} gc1={14} gc2={15} {16}",
                     now, snapshot.InputQueueMs, snapshot.OutputQueueMs, maxInputMs, maxOutputMs, maxCaptureGapMs, snapshot.InputRate, snapshot.OutputRate, snapshot.Blocks, snapshot.Underruns, snapshot.Discontinuities, recovery.Count, Interlocked.Read(ref droppedOutput), GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2), timings.Summary()));
+                var worker = Volatile.Read(ref modelWorker);
+                if (worker != null) Diagnostics.Write("worker-health", worker.DiagnosticSummary());
+                Diagnostics.Write("log-health", Diagnostics.Summary());
             }
             catch (Exception ex) { Diagnostics.Failure("health-monitor", ex); }
             finally { Volatile.Write(ref healthBusy, 0); }
@@ -203,9 +207,13 @@ namespace KeepClear
 
         private static double Peak(float[] values)
         {
+            return Peak(values, values.Length);
+        }
+
+        private static double Peak(float[] values, int count)
+        {
             double peak = 0;
-            foreach (float value in values)
-                peak = Math.Max(peak, Math.Abs(value));
+            for (int i = 0; i < count; i++) peak = Math.Max(peak, Math.Abs(values[i]));
             return peak;
         }
 
@@ -219,6 +227,9 @@ namespace KeepClear
                 using (var endpoint = new AudioEndpoint(options.InputId, true))
                 {
                     var resampler = new StreamResampler(endpoint.Format.Rate, 16000);
+                    var mono = new float[(int)endpoint.Capacity];
+                    var converted = new float[0];
+                    var waits = new WaitHandle[] { endpoint.Ready, cancellation.Token.WaitHandle };
                     Diagnostics.Write("capture-format", "rate=" + endpoint.Format.Rate + " channels=" + endpoint.Format.Channels + " bits=" + endpoint.Format.Bits + " capacity=" + endpoint.Capacity);
                     lock (gate)
                         inRate = endpoint.Format.Rate;
@@ -233,7 +244,7 @@ namespace KeepClear
 
                     while (!cancellation.IsCancellationRequested)
                     {
-                        int signaled = WaitHandle.WaitAny(new WaitHandle[] { endpoint.Ready, cancellation.Token.WaitHandle }, 2000);
+                        int signaled = WaitHandle.WaitAny(waits, 2000);
                         if (signaled == 1)
                             break;
                         if (signaled == WaitHandle.WaitTimeout)
@@ -252,10 +263,10 @@ namespace KeepClear
                             uint frames, flags;
                             ulong position, clock;
                             NativeAudio.Check(endpoint.Capture.GetBuffer(out pointer, out frames, out flags, out position, out clock));
-                            float[] mono;
                             try
                             {
-                                mono = endpoint.Format.Decode(pointer, (int)frames, (flags & 2) != 0, options.SilenceOutput);
+                                if (frames > mono.Length) Array.Resize(ref mono, (int)frames);
+                                endpoint.Format.DecodeInto(pointer, (int)frames, (flags & 2) != 0, options.SilenceOutput, mono);
                             }
                             finally
                             {
@@ -266,15 +277,15 @@ namespace KeepClear
                             if ((flags & 1) != 0)
                                 Interlocked.Increment(ref discontinuities);
                             lock (gate)
-                                inPeak = Peak(mono);
-                            float[] converted = resampler.Push(mono);
+                                inPeak = Peak(mono, (int)frames);
+                            int convertedCount = resampler.PushInto(mono, (int)frames, ref converted);
                             lock (gate)
                             {
                                 // Silent startup checks test connectivity, not queue stability.
                                 if (options.SilenceOutput)
-                                    input.WriteLatest(converted);
-                                else if (!input.Write(converted))
-                                    throw new AudioFailureException(AudioFailureKind.Slow, "Model input cannot keep up and its bounded 512 ms queue is full; packet_samples=" + converted.Length);
+                                    input.WriteLatest(converted, convertedCount);
+                                else if (!input.Write(converted, convertedCount))
+                                    throw new AudioFailureException(AudioFailureKind.Slow, "Model input cannot keep up and its bounded 512 ms queue is full; packet_samples=" + convertedCount);
                                 maxInputMs = Math.Max(maxInputMs, input.Count / 16.0 + processingQueuedMs);
                             }
                             inputReady.Set();
@@ -305,6 +316,7 @@ namespace KeepClear
                     lock (gate)
                         state = "正在加载本地模型…";
                     model = new ModelWorker(options.Python, options.Root, options.Alkove, options.Denoiser, cancellation.Token);
+                    Volatile.Write(ref modelWorker, (ModelWorker)model);
                 }
 
                 using (var pipeline = model == null ? new SerialPipeline(gain) : new SerialPipeline(model, gain))
@@ -312,12 +324,13 @@ namespace KeepClear
                     loaded = true;
                     modelsReady.Set();
                     var block = new float[256];
+                    var waits = new WaitHandle[] { inputReady, cancellation.Token.WaitHandle };
                     var watch = new Stopwatch();
                     while (!cancellation.IsCancellationRequested)
                     {
                         if (input.Count < 256)
                         {
-                            if (!Await(inputReady))
+                            if (WaitHandle.WaitAny(waits) != 0 || cancellation.IsCancellationRequested)
                                 break;
                             continue;
                         }
@@ -391,6 +404,9 @@ namespace KeepClear
                     Diagnostics.Write("render-format", "rate=" + endpoint.Format.Rate + " channels=" + endpoint.Format.Channels + " bits=" + endpoint.Format.Bits + " capacity=" + endpoint.Capacity);
                     var renderBuffer = new SampleBuffer(endpoint.Format.Rate / 2);
                     var packet = new float[(int)endpoint.Capacity];
+                    var samples = new float[4096];
+                    var converted = new float[0];
+                    var waits = new WaitHandle[] { endpoint.Ready, cancellation.Token.WaitHandle };
                     bool primed = false;
                     uint task;
                     mmcss = NativeAudio.AvSetMmThreadCharacteristics("Audio", out task);
@@ -401,7 +417,7 @@ namespace KeepClear
                     renderReady.Set();
                     while (!cancellation.IsCancellationRequested)
                     {
-                        int signaled = WaitHandle.WaitAny(new WaitHandle[] { endpoint.Ready, cancellation.Token.WaitHandle }, 2000);
+                        int signaled = WaitHandle.WaitAny(waits, 2000);
                         if (signaled == 1)
                             break;
                         if (signaled == WaitHandle.WaitTimeout)
@@ -415,11 +431,9 @@ namespace KeepClear
                         if (primed)
                         {
                             int queued;
-                            float[] samples;
                             lock (gate)
                             {
                                 queued = Math.Min(output.Count, 4096);
-                                samples = new float[queued];
                                 output.Read(samples, queued);
                                 resampleQueuedMs = queued / 16.0;
                             }
@@ -428,16 +442,16 @@ namespace KeepClear
                                 double fillMs = renderBuffer.Count * 1000.0 / endpoint.Format.Rate + queued / 16.0;
                                 // Modest clock correction for independent microphone/cable clocks.
                                 double ratio = 1 + Math.Max(-0.003, Math.Min(0.003, (fillMs - 48) * 0.0001));
-                                var converted = resampler.Push(samples, ratio);
+                                int convertedCount = resampler.PushInto(samples, queued, ref converted, ratio);
                                 lock (gate)
                                 {
                                     if (options.SilenceOutput)
-                                        renderBuffer.WriteLatest(converted);
-                                    else if (!renderBuffer.Write(converted))
+                                        renderBuffer.WriteLatest(converted, convertedCount);
+                                    else if (!renderBuffer.Write(converted, convertedCount))
                                     {
-                                        int discarded = renderBuffer.KeepLatest(Math.Max(0, endpoint.Format.Rate / 2 - converted.Length), endpoint.Format.Rate / 100);
+                                        int discarded = renderBuffer.KeepLatest(Math.Max(0, endpoint.Format.Rate / 2 - convertedCount), endpoint.Format.Rate / 100);
                                         Interlocked.Add(ref droppedOutput, (long)discarded * 16000 / endpoint.Format.Rate);
-                                        if (!renderBuffer.Write(converted)) throw new InvalidOperationException("Processed render packet exceeded bounded capacity.");
+                                        if (!renderBuffer.Write(converted, convertedCount)) throw new InvalidOperationException("Processed render packet exceeded bounded capacity.");
                                     }
                                     renderQueuedMs = renderBuffer.Count * 1000.0 / endpoint.Format.Rate;
                                     resampleQueuedMs = 0;

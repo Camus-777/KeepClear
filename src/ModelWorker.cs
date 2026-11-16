@@ -21,6 +21,34 @@ namespace KeepClear
         private readonly Timer watchdog;
         private long deadline;
         private byte[] inputBytes = new byte[1024], outputBytes = new byte[2048];
+        private readonly TimingWindow sendTimes = new TimingWindow(), waitTimes = new TimingWindow(), receiveTimes = new TimingWindow();
+        private readonly Stopwatch resourceClock = Stopwatch.StartNew();
+        private double previousCpuMs, previousWallMs, nextResourceAt;
+        private string resourceSummary = "resources=pending";
+
+        internal string DiagnosticSummary()
+        {
+            // Called by the health timer, never by the audio processing thread.
+            double now = resourceClock.Elapsed.TotalMilliseconds;
+            if (now >= nextResourceAt)
+            {
+                nextResourceAt = now + 5000;
+                try
+                {
+                    process.Refresh();
+                    double cpu = process.TotalProcessorTime.TotalMilliseconds;
+                    resourceSummary = String.Format(System.Globalization.CultureInfo.InvariantCulture,
+                        "pid={0} cpu_total_ms={1:F2} cpu_interval_ms={2:F2} wall_interval_ms={3:F2} cpu_cores={4:F3} working_set_bytes={5} private_bytes={6} threads={7}",
+                        process.Id, cpu, cpu - previousCpuMs, now - previousWallMs,
+                        (cpu - previousCpuMs) / Math.Max(1, now - previousWallMs), process.WorkingSet64, process.PrivateMemorySize64, process.Threads.Count);
+                    previousCpuMs = cpu;
+                    previousWallMs = now;
+                }
+                catch (Exception ex) { resourceSummary = "resources_unavailable=" + ex.GetType().Name; }
+            }
+            return resourceSummary + " send={" + sendTimes.Summary() + "} reply_wait={" + waitTimes.Summary()
+                + "} receive={" + receiveTimes.Summary() + "}";
+        }
         public string Name
         {
             get
@@ -176,13 +204,18 @@ namespace KeepClear
                 Arm(2000);
                 try
                 {
+                    long sentAt = Stopwatch.GetTimestamp();
                     int byteCount = samples.Length * 4;
                     if (inputBytes.Length < byteCount) Array.Resize(ref inputBytes, byteCount);
                     Buffer.BlockCopy(samples, 0, inputBytes, 0, byteCount);
                     writer.Write(samples.Length);
                     writer.Write(inputBytes, 0, byteCount);
                     writer.Flush();
+                    long waitingAt = Stopwatch.GetTimestamp();
+                    sendTimes.Add((waitingAt - sentAt) * 1000.0 / Stopwatch.Frequency);
                     int frames = reader.ReadInt32();
+                    long receivingAt = Stopwatch.GetTimestamp();
+                    waitTimes.Add((receivingAt - waitingAt) * 1000.0 / Stopwatch.Frequency);
                     if (frames < 0 || frames > 32000)
                         throw new InvalidDataException("模型返回的采样数量超出协议范围。");
                     byteCount = frames * 4;
@@ -196,6 +229,7 @@ namespace KeepClear
                     }
                     var result = new float[frames];
                     Buffer.BlockCopy(outputBytes, 0, result, 0, byteCount);
+                    receiveTimes.Add((Stopwatch.GetTimestamp() - receivingAt) * 1000.0 / Stopwatch.Frequency);
                     return result;
                 }
                 finally { Arm(0); }

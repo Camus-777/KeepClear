@@ -144,22 +144,22 @@ def main():
         shutil.copy2(ROOT / name, output / name)
     shutil.copy2(ROOT / "docs" / "PORTABLE-QUICKSTART.txt", output / "开始使用.txt")
     manifest = {
-        "format": 1, "application": "KeepClear", "version": "0.3.1", "architecture": "Windows x64",
+        "format": 1, "application": "KeepClear", "version": "0.3.2", "architecture": "Windows x64",
         "python": {"version": PYTHON_VERSION, "source": EMBED_URL, "sha256": EMBED_SHA},
         "packages": packages, "omitted_build_bytes": omitted_bytes,
         "cpp_runtime_alias_source": cpp_source,
         "prerequisites": ["Windows 10/11 x64", ".NET Framework 4.8", "Windows administrator approval if VB-CABLE is missing"],
         "bundled_vbcable": {"resource": "KeepClear.VBCable.zip", "package": "VBCABLE_Driver_Pack46.zip", "sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90", "origin": "https://vb-audio.com/Cable/"},
         "publication": {
-            "date": "2026-11-16", "release_tag": "v0.3.1", "original_project_license": "CC-BY-NC-4.0",
+            "date": "2026-11-17", "release_tag": "v0.3.2", "original_project_license": "CC-BY-NC-4.0",
             "copyright_notice": "NOTICE",
-            "changes": "ATen CPU streaming with up to two compute threads, denormal flushing and execution diagnostics; DPI-aware device selector heights, aligned Refresh and fixed-point tray menu typography with text centered from current item bounds. Connectivity startup checks, queue-trend recovery, model weights, float32 model parameters, runtime libraries and bundled VB-CABLE retained.",
+            "changes": "Counted reusable audio buffers; bounded batched background logging with fault priority; IPC phase timings, worker CPU/memory/thread and DNS48 state-size diagnostics. Retains ATen execution, DPI/tray repairs, connectivity checks, queue-trend recovery, original weights and bundled runtime/driver.",
         },
         "startup_audio_check": {
             "gui_each_primary_startup": True, "requires_microphone_confirmation": True,
             "automatic_microphone_fallback": False, "silent_render": True,
             "mode": "connectivity-only", "performance_thresholds": False,
-            "requires_processed_output_submission": True, "audio_stage_timeout_seconds": 55,
+            "requires_processed_output_submission": True, "audio_stage_timeout_seconds": 45,
             "drops_stale_silent_test_samples": True,
             "driver_endpoint_wait_seconds": 20, "persistent_driver_pending_state": True,
             "text_logs": "%LOCALAPPDATA%/KeepClear/logs",
@@ -167,6 +167,12 @@ def main():
         "cpu_inference": {
             "backend": "aten", "max_compute_threads": 2, "parallel_min_logical_processors": 4,
             "interop_threads": 1, "flush_denormal": True, "dtype": "float32",
+        },
+        "diagnostics": {
+            "async_log_capacity": 512, "log_batch_size": 32, "max_record_chars": 16384,
+            "exit_flush_ms": 2000, "worker_resource_interval_seconds": 5,
+            "ipc_phase_timings": True, "worker_cpu_and_state_metrics": True,
+            "records_audio": False,
         },
         "runtime_recovery": {
             "mode": "total-queue-trend", "sample_ms": 100, "window_seconds": 1,

@@ -16,10 +16,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-0.3.1-007ec6" height="20" alt="版本 0.3.1">
+  <img src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-0.3.2-007ec6" height="20" alt="版本 0.3.2">
   <img src="https://img.shields.io/badge/%E5%B9%B3%E5%8F%B0-Windows%2010%2F11%20x64-007ec6" height="20" alt="Windows 10/11 x64">
   <img src="https://img.shields.io/badge/%E9%9F%B3%E9%A2%91-WASAPI%2016kHz-4c1" height="20" alt="WASAPI 16kHz">
-  <img src="https://img.shields.io/badge/%E6%A3%80%E6%9F%A5-180%20%E9%A1%B9%20C%23%20%2B%208%20%E9%A1%B9%20Python%20%E9%80%9A%E8%BF%87-4c1" height="20" alt="180 项 C# 与 8 项 Python 检查通过">
+  <img src="https://img.shields.io/badge/%E6%A3%80%E6%9F%A5-202%20%E9%A1%B9%20C%23%20%2B%2010%20%E9%A1%B9%20Python%20%E9%80%9A%E8%BF%87-4c1" height="20" alt="202 项 C# 与 10 项 Python 检查通过">
   <img src="https://img.shields.io/badge/%E8%AE%B8%E5%8F%AF-CC%20BY--NC%204.0-9f9f9f" height="20" alt="许可 CC BY-NC 4.0">
 </p>
 
@@ -60,7 +60,7 @@ Alkove Focus 优先提取靠近麦克风的人声，抑制距离较远的背景�
 
 ## 下载与快速开始
 
-从仓库的 **[Releases](../../releases)** 页面下载 **KeepClear-0.3.1-win-x64.zip**，完整解压后运行 **KeepClear.exe**。需要 **Windows 10/11 x64** 和 **.NET Framework 4.8**。
+从仓库的 **[Releases](../../releases)** 页面下载 **KeepClear-0.3.2-win-x64.zip**，完整解压后运行 **KeepClear.exe**。需要 **Windows 10/11 x64** 和 **.NET Framework 4.8**。
 
 1. **确认并测试麦克风**：启动时选择麦克风，确保设备已经开启且未静音，然后点击 **Run test（开始自检）**。通过后，在主界面保持 **CABLE Input** 为虚拟输出设备。
 2. **启动处理**：点击 **Start（启动）**，然后在游戏或通话软件中，将麦克风设置为 **CABLE Output**。

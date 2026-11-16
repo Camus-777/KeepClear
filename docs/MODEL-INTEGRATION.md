@@ -1,4 +1,4 @@
-# 模型接入与复现（0.3.1）
+# 模型接入与复现（0.3.2）
 
 **已在本机接入真实 Alkove Focus → Facebook Denoiser DNS48。** 已验证实际推理、中文合成语音、C# 管道和 WASAPI→VB-CABLE 设备链路。真人听感、多人重叠与游戏内效果仍待验证。
 
@@ -6,7 +6,7 @@
 
 普通用户打开完整独立包中的 `KeepClear.exe`；开发者也可打开 `dist/KeepClear.exe`。两级模型固定全开，按 Alkove → Denoiser 运行。选择真实麦克风和 CABLE Input，点击“启动”。游戏/通话里选择 CABLE Output 作为麦克风。
 
-当前 `release/KeepClear-0.3.1-win-x64` 已包含独立 Python、模型和运行依赖，详见 [PORTABLE.md](PORTABLE.md)。普通构建生成的 dist 仍为开发输出，只有 dist 时需要项目 .venv 或显式配置的 Python，不能把它当作完整独立包。
+当前 `release/KeepClear-0.3.2-win-x64` 已包含独立 Python、模型和运行依赖，详见 [PORTABLE.md](PORTABLE.md)。普通构建生成的 dist 仍为开发输出，只有 dist 时需要项目 .venv 或显式配置的 Python，不能把它当作完整独立包。
 
 ## 固定版本
 

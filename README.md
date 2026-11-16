@@ -16,10 +16,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-0.3.1-007ec6" height="20" alt="Version 0.3.1">
+  <img src="https://img.shields.io/badge/Version-0.3.2-007ec6" height="20" alt="Version 0.3.2">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-007ec6" height="20" alt="Windows 10/11 x64">
   <img src="https://img.shields.io/badge/Audio-WASAPI%2016kHz-4c1" height="20" alt="WASAPI 16kHz">
-  <img src="https://img.shields.io/badge/Checks-180%20C%23%20%2B%208%20Python%20Passed-4c1" height="20" alt="Tests Passed">
+  <img src="https://img.shields.io/badge/Checks-202%20C%23%20%2B%2010%20Python%20Passed-4c1" height="20" alt="Tests Passed">
   <img src="https://img.shields.io/badge/License-CC%20BY--NC%204.0-9f9f9f" height="20" alt="License CC BY-NC 4.0">
 </p>
 
@@ -60,7 +60,7 @@ All inference runs **100% locally and offline**. KeepClear does not save microph
 
 ## Download & Quick Start
 
-Download **KeepClear-0.3.1-win-x64.zip** from the **[Releases](../../releases)** page, extract the entire archive, and run **KeepClear.exe**. Requires **Windows 10/11 x64** and **.NET Framework 4.8**.
+Download **KeepClear-0.3.2-win-x64.zip** from the **[Releases](../../releases)** page, extract the entire archive, and run **KeepClear.exe**. Requires **Windows 10/11 x64** and **.NET Framework 4.8**.
 
 1. **Confirm & Test Microphone**: At startup, select your microphone, ensure it is on/unmuted, and click **Run test**. After the test passes, keep **CABLE Input** selected as the virtual output in the main window.
 2. **Start Processing**: Click **Start**, then set **CABLE Output** as your microphone in your game or calling app.

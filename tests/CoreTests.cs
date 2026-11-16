@@ -416,6 +416,7 @@ namespace KeepClear
                     Check(!String.IsNullOrEmpty(engine.Snapshot().Error), "device open failure becomes engine fault");
                 }
 
+                StabilityTests.Run(Check);
                 Console.WriteLine("TOTAL: " + passed + " passed");
                 return 0;
             }

@@ -50,7 +50,7 @@ namespace KeepClear
                 engine.Start();
                 var timeout = Stopwatch.StartNew();
                 progress("testing-audio");
-                while (timeout.ElapsedMilliseconds < 55000)
+                while (timeout.ElapsedMilliseconds < 45000)
                 {
                     token.ThrowIfCancellationRequested();
                     reader.ThrowIfFailed();

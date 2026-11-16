@@ -75,6 +75,9 @@ namespace KeepClear
                     var resampler = new StreamResampler(16000, endpoint.Format.Rate);
                     var buffer = new SampleBuffer(endpoint.Format.Rate / 2);
                     var packet = new float[(int)endpoint.Capacity];
+                    var samples = new float[2048];
+                    var converted = new float[0];
+                    var waits = new WaitHandle[] { endpoint.Ready, stop.Token.WaitHandle };
                     bool primed = false;
                     int seenEpoch = 0;
                     uint task;
@@ -86,7 +89,7 @@ namespace KeepClear
                     Volatile.Write(ref active, 1);
                     while (!stop.IsCancellationRequested)
                     {
-                        int signaled = WaitHandle.WaitAny(new WaitHandle[] { endpoint.Ready, stop.Token.WaitHandle }, 2000);
+                        int signaled = WaitHandle.WaitAny(waits, 2000);
                         if (signaled == 1)
                             break;
                         if (signaled == WaitHandle.WaitTimeout)
@@ -108,11 +111,11 @@ namespace KeepClear
                         {
                             if (queued > 0)
                             {
-                                var samples = new float[queued];
-                                input.Read(samples, queued);
+                                queued = input.Read(samples, queued);
                                 double fillMs = buffer.Count * 1000.0 / endpoint.Format.Rate + queued / 16.0;
                                 double ratio = 1 + Math.Max(-0.003, Math.Min(0.003, (fillMs - 48) * 0.0001));
-                                buffer.WriteLatest(resampler.Push(samples, ratio));
+                                int convertedCount = resampler.PushInto(samples, queued, ref converted, ratio);
+                                buffer.WriteLatest(converted, convertedCount);
                             }
 
                             int read = buffer.Read(packet, (int)free);

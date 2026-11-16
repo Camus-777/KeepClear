@@ -1,6 +1,10 @@
 # Changelog
 
-## v0.3.1 — 2026-11-16
+## v0.3.2 — 2026-11-17
+
+- Set the startup audio connectivity test timeout to 45 seconds.
+
+- Reuse counted audio/resampling buffers and wait arrays; add bounded asynchronous logging with fault priority, IPC phase timings, worker resource and DNS48 state-size diagnostics.
 
 - Center tray Exit text using the current item bounds and scaled padding; regression-check stale text rectangles across DPI scales and enabled/disabled states.
 

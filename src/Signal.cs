@@ -45,13 +45,19 @@ namespace KeepClear
 
         public bool Write(float[] source)
         {
+            return Write(source, source.Length);
+        }
+
+        internal bool Write(float[] source, int length)
+        {
+            if (length < 0 || length > source.Length) throw new ArgumentOutOfRangeException("length");
             lock (gate)
             {
-                if (source.Length > data.Length - count)
+                if (length > data.Length - count)
                     return false;
-                for (int i = 0; i < source.Length; i++)
+                for (int i = 0; i < length; i++)
                     data[(head + count + i) % data.Length] = source[i];
-                count += source.Length;
+                count += length;
                 return true;
             }
         }
@@ -59,14 +65,20 @@ namespace KeepClear
         // Optional local monitoring must never block or fault the main route.
         public void WriteLatest(float[] source)
         {
+            WriteLatest(source, source.Length);
+        }
+
+        internal void WriteLatest(float[] source, int validLength)
+        {
+            if (validLength < 0 || validLength > source.Length) throw new ArgumentOutOfRangeException("validLength");
             lock (gate)
             {
-                int start = Math.Max(0, source.Length - data.Length);
-                int length = source.Length - start;
+                int start = Math.Max(0, validLength - data.Length);
+                int length = validLength - start;
                 int discard = Math.Max(0, count + length - data.Length);
                 head = (head + discard) % data.Length;
                 count -= discard;
-                for (int i = start; i < source.Length; i++)
+                for (int i = start; i < validLength; i++)
                     data[(head + count++) % data.Length] = source[i];
             }
         }
@@ -174,10 +186,20 @@ namespace KeepClear
 
         public float[] Push(float[] input, double clockRatio)
         {
+            float[] output = new float[0];
+            int count = PushInto(input, input.Length, ref output, clockRatio);
+            Array.Resize(ref output, count);
+            return output;
+        }
+
+        // The caller owns this output and consumes only the returned prefix before reusing it.
+        internal int PushInto(float[] input, int count, ref float[] output, double clockRatio = 1)
+        {
+            if (count < 0 || count > input.Length) throw new ArgumentOutOfRangeException("count");
             if (clockRatio < 0.99 || clockRatio > 1.01)
                 throw new ArgumentOutOfRangeException("clockRatio");
-            pending.AddRange(input);
-            var output = new List<float>((int)(input.Length / step) + 4);
+            for (int i = 0; i < count; i++) pending.Add(input[i]);
+            int written = 0;
             while (position + Half < pending.Count)
             {
                 int center = (int)position;
@@ -185,7 +207,8 @@ namespace KeepClear
                 double sample = 0;
                 for (int j = 0; j < Half * 2; j++)
                     sample += pending[center - Half + 1 + j] * kernel[phase, j];
-                output.Add((float)sample);
+                if (written == output.Length) Array.Resize(ref output, Math.Max(256, output.Length * 2));
+                output[written++] = (float)sample;
                 position += step * clockRatio;
             }
 
@@ -196,7 +219,7 @@ namespace KeepClear
                 position -= consumed;
             }
 
-            return output.ToArray();
+            return written;
         }
 
         public float[] Push(float[] input)

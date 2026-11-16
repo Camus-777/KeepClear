@@ -485,8 +485,18 @@ namespace KeepClear
         public unsafe float[] Decode(IntPtr pointer, int frames, bool silent, bool strict = false)
         {
             var mono = new float[frames];
+            DecodeInto(pointer, frames, silent, strict, mono);
+            return mono;
+        }
+
+        internal unsafe void DecodeInto(IntPtr pointer, int frames, bool silent, bool strict, float[] mono)
+        {
+            if (frames < 0 || frames > mono.Length) throw new ArgumentOutOfRangeException("frames");
             if (silent)
-                return mono;
+            {
+                Array.Clear(mono, 0, frames);
+                return;
+            }
             byte* p = (byte*)pointer;
             for (int f = 0; f < frames; f++)
             {
@@ -503,7 +513,6 @@ namespace KeepClear
                 mono[f] = (float)(sum / Channels);
             }
 
-            return mono;
         }
 
         public unsafe void Encode(IntPtr pointer, float[] mono, int frames)

@@ -11,6 +11,12 @@ namespace KeepClear
         [STAThread]
         private static int Main(string[] args)
         {
+            try { return Run(args); }
+            finally { Diagnostics.Flush(); }
+        }
+
+        private static int Run(string[] args)
+        {
             Diagnostics.Session();
             if (args.Length == 2 && args[0] == "--self-test")
                 return SelfTest.Run(args[1]);

@@ -4,6 +4,9 @@ import math
 from pathlib import Path
 import struct
 import unittest
+import contextlib
+from unittest.mock import patch
+import json
 
 spec = importlib.util.spec_from_file_location("worker", Path(__file__).resolve().parents[1] / "workers" / "model_worker.py")
 worker = importlib.util.module_from_spec(spec)
@@ -11,6 +14,31 @@ spec.loader.exec_module(worker)
 
 
 class WorkerTests(unittest.TestCase):
+    def test_diagnostics_preserve_samples(self):
+        class Identity:
+            def process(self, pcm): return pcm
+        chain = worker.SerialChain([Identity()], metrics=True)
+        chain.report_at -= 2
+        output = io.StringIO()
+        with contextlib.redirect_stderr(output):
+            result = chain.process([0.25, -0.5])
+        report = json.loads(output.getvalue().split("KC_METRIC ", 1)[1])
+        self.assertEqual(result, [0.25, -0.5])
+        self.assertGreater(report['worker']['wall_interval_ms'], 0)
+        self.assertGreaterEqual(report['worker']['cpu_interval_ms'], 0)
+
+    def test_state_diagnostic_failure_is_nonfatal(self):
+        class DiagnosticFailure:
+            def process(self, pcm): return pcm
+            def diagnostic_state(self): raise RuntimeError('fixture')
+        with patch.object(worker, 'DenoiserStage', DiagnosticFailure):
+            chain = worker.SerialChain([DiagnosticFailure()], metrics=True)
+            chain.report_at -= 2
+            with contextlib.redirect_stderr(io.StringIO()) as output:
+                self.assertEqual(chain.process([0.25]), [0.25])
+            report = json.loads(output.getvalue().split("KC_METRIC ", 1)[1])
+            self.assertEqual(report['DiagnosticFailure']['state_unavailable'], 'RuntimeError')
+
     def test_serial_order(self):
         class Add:
             def process(self, pcm): return [x + 1 for x in pcm]
