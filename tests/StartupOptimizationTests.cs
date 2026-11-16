@@ -6,37 +6,33 @@ namespace KeepClear
 {
     internal static class StartupOptimizationTests
     {
-        private static EngineSnapshot Progress(EngineSnapshot previous, bool glitch = false)
+        private static EngineSnapshot Flow()
         {
             return new EngineSnapshot
             {
-                Blocks = previous.Blocks + 156,
-                ProcessedSamples = previous.ProcessedSamples + 39936,
-                CaptureFrames = previous.CaptureFrames + 120000,
-                RenderFrames = previous.RenderFrames + 120000,
-                TotalProcessMs = previous.TotalProcessMs + 1000,
-                InputQueueMs = 16,
-                OutputQueueMs = 48,
-                Underruns = previous.Underruns + (glitch ? 1 : 0)
+                State = "运行中",
+                CaptureFrames = 1,
+                ProcessedSamples = 1,
+                ProcessedRenderFrames = 1
             };
         }
 
         internal static void Run(Action<bool, string> check)
         {
-            var zero = new EngineSnapshot();
-            var healthy = Progress(zero);
-            var observation = new AudioObservation(zero, 0, 0);
-            check(observation.Observe(healthy, 120000, 48000, 2.5) == ObservationResult.Passed && !observation.RecoveryUsed, "healthy silent route completes one observation window");
-            observation = new AudioObservation(zero, 0, 0);
-            var glitch = Progress(zero, true);
-            check(observation.Observe(glitch, 120000, 48000, 2.5) == ObservationResult.Recovering, "one transient underrun enters bounded recovery instead of immediate failure");
-            check(observation.Observe(glitch, 120000, 48000, 2.9) == ObservationResult.Observing, "recovery gives the existing route a short settling period");
-            observation.Observe(glitch, 120000, 48000, 3.0);
-            check(observation.Observe(Progress(glitch), 240000, 48000, 5.5) == ObservationResult.Passed && observation.RecoveryUsed, "stable second window passes without reloading models");
-            observation = new AudioObservation(zero, 0, 0);
-            observation.Observe(glitch, 120000, 48000, 2.5);
-            observation.Observe(glitch, 120000, 48000, 3);
-            check(observation.Observe(Progress(glitch, true), 240000, 48000, 5.5) == ObservationResult.Failed, "repeated underrun fails after one recovery window, with no retry loop");
+            var flow = Flow();
+            flow.Underruns = 100;
+            flow.Discontinuities = 50;
+            flow.ProcessMs = 1500;
+            flow.InputQueueMs = 512;
+            flow.OutputQueueMs = 768;
+            check(AudioStartupTest.HasFlow(flow, 1), "startup accepts a working route regardless of underruns, gaps, timing or queue levels");
+            flow = Flow(); flow.CaptureFrames = 0;
+            check(!AudioStartupTest.HasFlow(flow, 1), "startup waits until microphone capture actually progresses");
+            flow = Flow(); flow.ProcessedSamples = 0;
+            check(!AudioStartupTest.HasFlow(flow, 1), "startup waits until the dual-model chain returns samples");
+            check(!AudioStartupTest.HasFlow(Flow(), 0), "startup waits for matching VB-CABLE capture callbacks");
+            flow = Flow(); flow.Error = "device disconnected";
+            check(!AudioStartupTest.HasFlow(flow, 1), "a real stream fault cannot pass merely because old counters are positive");
             check(AudioFailure.Classify("microphone", new COMException("localized OS message", unchecked((int)0x80070005))) == AudioFailureKind.Permission, "permission failure uses HRESULT, not OS message language");
             check(AudioFailure.Classify("microphone", new COMException("occupied", unchecked((int)0x8889000A))) == AudioFailureKind.Busy, "exclusive device use has a distinct error category");
             check(AudioFailure.Classify("microphone", new COMException("gone", unchecked((int)0x88890004))) == AudioFailureKind.Disconnected, "device invalidation has a distinct error category");

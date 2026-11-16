@@ -85,7 +85,7 @@ namespace KeepClear
                 case AudioFailureKind.ModelProcess:
                     return english ? "Model processing failed" : "模型处理失败";
                 case AudioFailureKind.Slow:
-                    return english ? "Processing cannot keep up" : "处理速度或音频缓冲不稳定";
+                    return english ? "Audio stream backlog did not recover" : "音频链路积压未能恢复";
                 case AudioFailureKind.InputTimeout:
                     return english ? "Microphone is not returning audio" : "麦克风没有返回音频";
                 case AudioFailureKind.OutputTimeout:
@@ -117,7 +117,7 @@ namespace KeepClear
                 case AudioFailureKind.ModelProcess:
                     return english ? "Retry; if it fails again, open the diagnostic log." : "请重新检查；再次失败时查看诊断日志。";
                 case AudioFailureKind.Slow:
-                    return english ? "Reduce CPU load, then retry the audio test." : "请减少 CPU 负载后重新检查音频链路。";
+                    return english ? "Retry; open logs to identify processing, timing or device stalls." : "请重试，并查看日志定位处理、调度或设备停顿。";
                 case AudioFailureKind.InputTimeout:
                     return english ? "Check the microphone connection, permissions and audio driver." : "请检查麦克风连接、访问权限和声卡驱动。";
                 case AudioFailureKind.OutputTimeout:

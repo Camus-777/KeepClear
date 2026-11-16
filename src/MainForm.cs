@@ -14,6 +14,22 @@ namespace KeepClear
         public static readonly Color Paper = Color.White, Back = Color.FromArgb(244, 247, 251), Ink = Color.FromArgb(24, 44, 58), Muted = Color.FromArgb(87, 108, 124), Blue = Color.FromArgb(22, 102, 197), Line = Color.FromArgb(214, 224, 234);
     }
 
+    internal sealed class TrayMenuRenderer : ToolStripSystemRenderer
+    {
+        protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+        {
+            // Framework text bounds can lag behind the popup's DPI layout.
+            // Paint against the current item bounds, including its scaled padding.
+            Padding padding = e.Item.Padding;
+            e.TextRectangle = new Rectangle(padding.Left, padding.Top,
+                Math.Max(1, e.Item.Width - padding.Horizontal),
+                Math.Max(1, e.Item.Height - padding.Vertical));
+            e.TextFormat = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter
+                | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix;
+            base.OnRenderItemText(e);
+        }
+    }
+
     internal sealed class Meter : Control
     {
         private readonly MeterEnvelope envelope = new MeterEnvelope();
@@ -32,34 +48,60 @@ namespace KeepClear
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            int trackWidth = Math.Max(1, Width - 65);
+            float scale = DeviceDpi / 96f;
+            int trackWidth = Math.Max(1, Width - (int)(65 * scale));
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using (var rail = new Pen(Palette.Line, 6)
+            using (var rail = new Pen(Palette.Line, 6 * scale)
             {
                 StartCap = LineCap.Round,
                 EndCap = LineCap.Round
             })
-                e.Graphics.DrawLine(rail, 4, 14, trackWidth, 14);
-            float end = (float)(4 + (trackWidth - 4) * (envelope.Db + 60) / 60);
-            if (end > 4.1)
-                using (var fill = new Pen(envelope.Db > -1 ? Color.FromArgb(180, 69, 45) : Palette.Blue, 6)
+                e.Graphics.DrawLine(rail, 4 * scale, 14 * scale, trackWidth, 14 * scale);
+            float end = (float)(4 * scale + (trackWidth - 4 * scale) * (envelope.Db + 60) / 60);
+            if (end > 4.1 * scale)
+                using (var fill = new Pen(envelope.Db > -1 ? Color.FromArgb(180, 69, 45) : Palette.Blue, 6 * scale)
                 {
                     StartCap = LineCap.Round,
                     EndCap = LineCap.Round
                 })
-                    e.Graphics.DrawLine(fill, 4, 14, end, 14);
-            TextRenderer.DrawText(e.Graphics, envelope.Db < -59.5 ? "−∞" : envelope.Db.ToString("F0") + " dB", Font, new Rectangle(trackWidth + 6, 3, 59, 24), Palette.Muted, TextFormatFlags.Right | TextFormatFlags.NoPadding);
+                    e.Graphics.DrawLine(fill, 4 * scale, 14 * scale, end, 14 * scale);
+            TextRenderer.DrawText(e.Graphics, envelope.Db < -59.5 ? "−∞" : envelope.Db.ToString("F0") + " dB", Font, new Rectangle(trackWidth + (int)(6 * scale), (int)(3 * scale), (int)(59 * scale), (int)(24 * scale)), Palette.Muted, TextFormatFlags.Right | TextFormatFlags.NoPadding);
             AccessibleDescription = envelope.Db.ToString("F0") + " dBFS";
         }
     }
 
     internal sealed class DeviceComboBox : ComboBox
     {
+        internal void ApplyDpiMetrics()
+        {
+            int height = Math.Max((int)Math.Ceiling(24 * DeviceDpi / 96.0), Font.Height + (int)Math.Ceiling(4 * DeviceDpi / 96.0));
+            if (ItemHeight != height) ItemHeight = height;
+        }
+
         internal DeviceComboBox()
         {
             DrawMode = DrawMode.OwnerDrawFixed;
             BackColor = Color.White;
             ForeColor = Color.Black;
+            ApplyDpiMetrics();
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            ApplyDpiMetrics();
+        }
+
+        protected override void OnFontChanged(EventArgs e)
+        {
+            base.OnFontChanged(e);
+            if (DrawMode == DrawMode.OwnerDrawFixed) ApplyDpiMetrics();
+        }
+
+        protected override void OnDpiChangedAfterParent(EventArgs e)
+        {
+            base.OnDpiChangedAfterParent(e);
+            ApplyDpiMetrics();
         }
 
         protected override void OnDrawItem(DrawItemEventArgs args)
@@ -71,7 +113,10 @@ namespace KeepClear
             using (var brush = new SolidBrush(background))
                 args.Graphics.FillRectangle(brush, args.Bounds);
             if (args.Index >= 0 && args.Index < Items.Count)
-                TextRenderer.DrawText(args.Graphics, GetItemText(Items[args.Index]), args.Font, new Rectangle(args.Bounds.X + 8, args.Bounds.Y, Math.Max(1, args.Bounds.Width - 16), args.Bounds.Height), foreground, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
+            {
+                int padding = (int)Math.Round(8 * DeviceDpi / 96.0);
+                TextRenderer.DrawText(args.Graphics, GetItemText(Items[args.Index]), args.Font, new Rectangle(args.Bounds.X + padding, args.Bounds.Y, Math.Max(1, args.Bounds.Width - padding * 2), args.Bounds.Height), foreground, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
+            }
             base.OnDrawItem(args);
         }
 
@@ -88,7 +133,7 @@ namespace KeepClear
         }
     }
 
-    public sealed class MainForm : Form
+    public sealed class MainForm : DpiFixedForm
     {
         private readonly ComboBox input = new DeviceComboBox(), output = new DeviceComboBox(), monitorDevice = new DeviceComboBox();
         private readonly Button refresh = new Button(), start = new Button(), listen = new Button(), language = new Button();
@@ -102,6 +147,7 @@ namespace KeepClear
         private readonly NotifyIcon tray = new NotifyIcon();
         private readonly ContextMenuStrip trayMenu = new ContextMenuStrip();
         private readonly ToolStripMenuItem trayExit = new ToolStripMenuItem();
+        private readonly Font trayFont = new Font("Microsoft YaHei UI", 9, FontStyle.Regular, GraphicsUnit.Point);
         private readonly ToolTip errorDetails = new ToolTip
         {
             AutoPopDelay = 20000
@@ -155,7 +201,7 @@ namespace KeepClear
         {
         }
 
-        internal MainForm(AppSettings preferences, Action<AppSettings> savePreferences, Action openLogs = null)
+        internal MainForm(AppSettings preferences, Action<AppSettings> savePreferences, Action openLogs = null) : base(new Size(480, 456))
         {
             this.savePreferences = savePreferences;
             this.openLogs = openLogs ?? delegate
@@ -167,10 +213,10 @@ namespace KeepClear
             english = settings.Language == "en";
             AutoScaleMode = AutoScaleMode.Dpi;
             Font = new Font("Microsoft YaHei UI", 9);
+            AutoScaleDimensions = new SizeF(96, 96);
             Text = "KeepClear";
             FormBorderStyle = FormBorderStyle.FixedSingle;
             ClientSize = new Size(480, 456);
-            MinimumSize = Size;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Palette.Back;
@@ -306,6 +352,15 @@ namespace KeepClear
             };
             timer.Start();
             trayMenu.Items.Add(trayExit);
+            trayMenu.Renderer = new TrayMenuRenderer();
+            trayExit.TextAlign = ContentAlignment.MiddleCenter;
+            trayMenu.ShowImageMargin = trayMenu.ShowCheckMargin = false;
+            trayMenu.Opening += delegate { UpdateTrayMetrics(); };
+            trayMenu.Opened += delegate
+            {
+                UpdateTrayMetrics();
+                Diagnostics.Write("tray-dpi", "dpi=" + trayMenu.DeviceDpi + " font_pt=" + trayExit.Font.SizeInPoints + " item=" + trayExit.Size + " menu=" + trayMenu.Size);
+            };
             trayExit.Click += async delegate
             {
                 await ExitApplication();
@@ -321,7 +376,6 @@ namespace KeepClear
             };
             Shown += delegate
             {
-                MinimumSize = MaximumSize = Size;
                 RefreshDevices();
                 ApplyStartupResult(startupResult);
             };
@@ -391,6 +445,7 @@ namespace KeepClear
                 tray.Visible = false;
                 tray.Dispose();
                 trayMenu.Dispose();
+                trayFont.Dispose();
                 errorDetails.Dispose();
             }
 
@@ -449,6 +504,23 @@ namespace KeepClear
                 ShowFailure(ex);
                 UpdateControls();
             }
+        }
+
+        private void UpdateTrayMetrics()
+        {
+            trayMenu.Font = trayFont;
+            trayExit.Font = trayFont;
+            int dpi = trayMenu.DeviceDpi;
+            trayExit.Padding = new Padding((int)Math.Round(8 * dpi / 96.0), (int)Math.Round(4 * dpi / 96.0), (int)Math.Round(8 * dpi / 96.0), (int)Math.Round(4 * dpi / 96.0));
+            trayMenu.PerformLayout();
+        }
+
+        protected override void ArrangeForDpi()
+        {
+            foreach (DeviceComboBox combo in new[] { input, output, monitorDevice })
+                combo.ApplyDpiMetrics();
+            refresh.Height = input.Height;
+            Diagnostics.Write("device-ui-dpi", "dpi=" + DeviceDpi + " input=" + input.Size + " item_height=" + input.ItemHeight + " font_pt=" + input.Font.SizeInPoints + " refresh=" + refresh.Size);
         }
 
         private static void StyleButton(Button button, bool primary)
@@ -553,7 +625,7 @@ namespace KeepClear
             listen.Text = monitorWanted ? T("监听：开", "Monitor: on") : T("监听：关", "Monitor: off");
             listen.BackColor = monitorWanted ? Color.FromArgb(225, 237, 252) : Palette.Paper;
             listen.ForeColor = monitorWanted ? Palette.Blue : Palette.Ink;
-            hint.Text = noticeKey == "devices" ? T("未检测到麦克风或 VB-CABLE，连接设备后点击刷新。", "Microphone or VB-CABLE missing. Connect devices, then refresh.") : noticeKey == "save" ? T("设置未能保存，请检查用户配置目录权限。", "Could not save settings. Check user folder permissions.") : noticeKey == "monitor" ? T("监听设备不可用，请关闭监听后重新选择设备。", "Monitor unavailable. Turn it off and select another device.") : noticeKey == "muted" ? T("启动检查时麦克风已静音，使用前请取消静音。", "Microphone was muted at startup. Unmute it before use.") : T("游戏 / 通话的麦克风请选择 CABLE Output。", "Select CABLE Output as the microphone in your game or call.");
+            hint.Text = noticeKey == "recovery" ? T("等待时间持续增加，正在恢复音频…", "Recovering a growing audio backlog…") : noticeKey == "devices" ? T("未检测到麦克风或 VB-CABLE，连接设备后点击刷新。", "Microphone or VB-CABLE missing. Connect devices, then refresh.") : noticeKey == "save" ? T("设置未能保存，请检查用户配置目录权限。", "Could not save settings. Check user folder permissions.") : noticeKey == "monitor" ? T("监听设备不可用，请关闭监听后重新选择设备。", "Monitor unavailable. Turn it off and select another device.") : noticeKey == "muted" ? T("启动检查时麦克风已静音，使用前请取消静音。", "Microphone was muted at startup. Unmute it before use.") : T("游戏 / 通话的麦克风请选择 CABLE Output。", "Select CABLE Output as the microphone in your game or call.");
             state.Text = statusKey == "error" ? T("● 处理已停止，请复位后重试", "● Processing stopped. Reset to try again") : statusKey == "loading" ? T("● 正在加载模型…", "● Loading models…") : statusKey == "running" ? T("● 降噪中", "● Noise reduction active") : statusKey == "stopped" ? T("● 已停止", "● Stopped") : T("● 就绪", "● Ready");
             state.ForeColor = statusKey == "error" ? Color.FromArgb(175, 62, 45) : statusKey == "running" ? Palette.Blue : Palette.Muted;
             if (statusKey == "error" && !String.IsNullOrEmpty(lastError))
@@ -770,7 +842,7 @@ namespace KeepClear
             if (snapshot == null)
                 return;
             string nextStatus = !String.IsNullOrEmpty(snapshot.Error) ? "error" : snapshot.State == "运行中" ? "running" : "loading";
-            string nextNotice = !String.IsNullOrEmpty(snapshot.MonitorError) ? "monitor" : noticeKey;
+            string nextNotice = !String.IsNullOrEmpty(snapshot.MonitorError) ? "monitor" : snapshot.Recovering ? "recovery" : noticeKey == "recovery" ? "" : noticeKey;
             bool resetMonitor = monitorWanted && nextStatus != "running";
             if (resetMonitor)
                 monitorWanted = false;

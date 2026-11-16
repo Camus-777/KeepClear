@@ -85,20 +85,20 @@ namespace KeepClear
             }
 
             check(failed, "failed setup is not hidden by a residual PnP node");
-            var baseline = new EngineSnapshot();
             var current = new EngineSnapshot
             {
+                State = "运行中",
                 Blocks = 156,
                 ProcessedSamples = 39000,
                 CaptureFrames = 120000,
                 RenderFrames = 120000,
-                TotalProcessMs = 500,
+                ProcessedRenderFrames = 120000,
                 InputQueueMs = 16,
                 OutputQueueMs = 48
             };
-            check(AudioStartupTest.MeetsThroughput(current, baseline, 2.5), "silent microphone input does not fail audio throughput validation");
-            current.Blocks = 5;
-            check(!AudioStartupTest.MeetsThroughput(current, baseline, 2.5), "stalled processing cannot pass solely because device streams opened");
+            check(AudioStartupTest.HasFlow(current, 1), "silent microphone input passes when the complete route flows");
+            current.ProcessedRenderFrames = 0;
+            check(!AudioStartupTest.HasFlow(current, 1), "startup silence submissions alone cannot substitute for model output reaching render");
             var physical = new AudioDevice
             {
                 Id = "default",

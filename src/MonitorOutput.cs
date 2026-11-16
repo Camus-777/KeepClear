@@ -14,6 +14,12 @@ namespace KeepClear
         private volatile string error = "";
         private int active;
         private long rendered;
+        private int epoch;
+        internal void Resynchronize()
+        {
+            input.KeepLatest(0);
+            Interlocked.Increment(ref epoch);
+        }
         public string Error
         {
             get
@@ -70,6 +76,7 @@ namespace KeepClear
                     var buffer = new SampleBuffer(endpoint.Format.Rate / 2);
                     var packet = new float[(int)endpoint.Capacity];
                     bool primed = false;
+                    int seenEpoch = 0;
                     uint task;
                     mmcss = NativeAudio.AvSetMmThreadCharacteristics("Audio", out task);
                     IntPtr pointer;
@@ -87,6 +94,13 @@ namespace KeepClear
                         uint free = endpoint.FreeFrames();
                         if (free == 0)
                             continue;
+                        int currentEpoch = Volatile.Read(ref epoch);
+                        if (currentEpoch != seenEpoch)
+                        {
+                            seenEpoch = currentEpoch;
+                            buffer.KeepLatest(0);
+                            primed = false;
+                        }
                         int queued = input.Count;
                         if (!primed && queued >= 768)
                             primed = true;

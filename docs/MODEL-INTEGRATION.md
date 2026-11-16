@@ -1,4 +1,4 @@
-# 模型接入与复现（0.3.0）
+# 模型接入与复现（0.3.1）
 
 **已在本机接入真实 Alkove Focus → Facebook Denoiser DNS48。** 已验证实际推理、中文合成语音、C# 管道和 WASAPI→VB-CABLE 设备链路。真人听感、多人重叠与游戏内效果仍待验证。
 
@@ -6,7 +6,7 @@
 
 普通用户打开完整独立包中的 `KeepClear.exe`；开发者也可打开 `dist/KeepClear.exe`。两级模型固定全开，按 Alkove → Denoiser 运行。选择真实麦克风和 CABLE Input，点击“启动”。游戏/通话里选择 CABLE Output 作为麦克风。
 
-当前 `release/KeepClear-0.3.0-win-x64` 已包含独立 Python、模型和运行依赖，详见 [PORTABLE.md](PORTABLE.md)。普通构建生成的 dist 仍为开发输出，只有 dist 时需要项目 .venv 或显式配置的 Python，不能把它当作完整独立包。
+当前 `release/KeepClear-0.3.1-win-x64` 已包含独立 Python、模型和运行依赖，详见 [PORTABLE.md](PORTABLE.md)。普通构建生成的 dist 仍为开发输出，只有 dist 时需要项目 .venv 或显式配置的 Python，不能把它当作完整独立包。
 
 ## 固定版本
 
@@ -50,10 +50,10 @@ dist/
 
 - 内部格式：16 kHz、单声道 float32，每块 256 样本。状态在整个通话期间保留。
 - Alkove 0.4.0 的 `Processor` 即使 `cue=False` 也校验 Focus 与 Cue，因此需提供两个 .alk 文件；不开启 VAD 门控、声纹注册或自动增益，`normalize=False`。
-- Denoiser 采用 DNS48 因果结构和 `DemucsStreamer.feed()`，不逐块调用离线 forward。CPU 推理固定一个计算线程；启动时先预热内核，再创建全新流状态，预热音频不进入输出。
+- Denoiser 采用 DNS48 因果结构和 `DemucsStreamer.feed()`，不逐块调用离线 forward。CPU 执行使用 ATen 路径，关闭该 worker 的 oneDNN/MKLDNN 分派。至少 4 个逻辑处理器时使用 2 个计算线程，否则使用 1 个，interop 固定为 1，并请求清零极小非正规浮点数。保持 float32、原始权重、dry=0 和 num_frames=1。启动时先预热内核，再创建全新流状态，预热音频不进入输出。
 - DNS48 使用 `weights_only=True`、严格 state_dict 结构校验及完整文件 SHA256；不使用不受限 pickle 加载。
 - 支持上一级返回空块；完整串联首次非空回复出现在第 4 个 256 样本请求，持续流通常暂留 768 样本（48 ms）。停止时丢弃尾部，不在停止后继续输出。
-- 输出还包含框架的弹性缓冲、设备缓冲和重采样开销。8 ms 左右的本机推理耗时**不是端到端延迟**。
+- 输出还包含框架的弹性缓冲、设备缓冲和重采样开销。本机测量的推理耗时**不是端到端延迟**。
 - 主界面固定启用两级模型；单级比较仅用于开发测试，界面不提供模型开关或动态增益调节。
 
 ## 验证命令

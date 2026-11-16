@@ -22,11 +22,12 @@ if (Test-Path -LiteralPath (Join-Path $projectRoot 'models\MANIFEST.json')) {
 }
 Copy-Item -LiteralPath (Join-Path $projectRoot 'docs') -Destination $dist -Recurse -Force
 foreach ($publicationFile in @('README.md','README.zh-CN.md','THIRD-PARTY.md','LICENSE','NOTICE','LICENSING.md','CHANGELOG.md')) { Copy-Item -LiteralPath (Join-Path $projectRoot $publicationFile) -Destination $dist -Force }
-Set-Content -LiteralPath (Join-Path $dist 'KeepClear.exe.config') -Encoding UTF8 -Value '<?xml version="1.0"?><configuration><startup><supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.8"/></startup></configuration>'
+Copy-Item -LiteralPath (Join-Path $projectRoot 'App.config') -Destination (Join-Path $dist 'KeepClear.exe.config') -Force
 if ($Test) {
     $testSources = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'tests') -Filter '*.cs' | ForEach-Object FullName)
     & $compiler /nologo /target:exe /platform:x64 /unsafe+ /optimize+ "/win32icon:$projectRoot\assets\KeepClear.ico" "/win32manifest:$projectRoot\app.manifest" "/out:$dist\KeepClear.Tests.exe" @refs @resources @sources @testSources /main:KeepClear.Tests
     if ($LASTEXITCODE -ne 0) { throw 'Test build failed.' }
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'App.config') -Destination (Join-Path $dist 'KeepClear.Tests.exe.config') -Force
     & (Join-Path $dist 'KeepClear.Tests.exe')
     if ($LASTEXITCODE -ne 0) { throw 'Core tests failed.' }
     & python -m unittest discover -s (Join-Path $projectRoot 'tests') -p 'test_*.py' -v

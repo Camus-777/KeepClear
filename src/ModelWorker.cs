@@ -17,6 +17,10 @@ namespace KeepClear
         private readonly object errorGate = new object();
         private string lastError = "";
         private int timedOut;
+        private readonly object deadlineGate = new object();
+        private readonly Timer watchdog;
+        private long deadline;
+        private byte[] inputBytes = new byte[1024], outputBytes = new byte[2048];
         public string Name
         {
             get
@@ -27,6 +31,7 @@ namespace KeepClear
 
         public ModelWorker(string python, string root, bool alkove, bool denoiser, CancellationToken token)
         {
+            watchdog = new Timer(TimeoutKill, null, 50, 50);
             var info = new ProcessStartInfo(python);
             info.Arguments = "-I -B -u " + Quote(Path.Combine(root, "workers", "model_worker.py")) + " --models " + Quote(Path.Combine(root, "models")) + (alkove ? " --alkove" : "") + (denoiser ? " --denoiser" : "");
             info.UseShellExecute = false;
@@ -38,21 +43,37 @@ namespace KeepClear
             process.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs args)
             {
                 if (!String.IsNullOrEmpty(args.Data))
+                {
+                    if (args.Data.StartsWith("KC_METRIC ", StringComparison.Ordinal))
+                    {
+                        Diagnostics.Write("model-timing", args.Data.Substring(10));
+                        return;
+                    }
+                    if (args.Data.StartsWith("KC_CPU ", StringComparison.Ordinal))
+                    {
+                        Diagnostics.Write("model-cpu", args.Data.Substring(7));
+                        return;
+                    }
                     lock (errorGate)
                         lastError = args.Data.Length > 2000 ? args.Data.Substring(0, 2000) : args.Data;
+                }
             };
             try
             {
                 process.Start();
+                try { process.PriorityClass = ProcessPriorityClass.AboveNormal; }
+                catch (Exception ex) { Diagnostics.Failure("model-priority", ex); }
                 process.BeginErrorReadLine();
                 cancellation = token.Register(Kill);
                 reader = new BinaryReader(process.StandardOutput.BaseStream);
                 writer = new BinaryWriter(process.StandardInput.BaseStream);
-                using (var timer = new Timer(TimeoutKill, null, 45000, Timeout.Infinite))
+                Arm(45000);
+                try
                 {
                     if (Encoding.ASCII.GetString(ReadExactly(4)) != "CV01" || reader.ReadInt32() != 16000)
                         throw new InvalidDataException("模型工作进程协议不匹配。");
                 }
+                finally { Arm(0); }
 
                 token.ThrowIfCancellationRequested();
             }
@@ -105,8 +126,19 @@ namespace KeepClear
 
         private void TimeoutKill(object ignored)
         {
-            Interlocked.Exchange(ref timedOut, 1);
-            Kill();
+            lock (deadlineGate)
+            {
+                if (deadline == 0 || Stopwatch.GetTimestamp() < deadline) return;
+                deadline = 0;
+                Interlocked.Exchange(ref timedOut, 1);
+                Kill();
+            }
+        }
+
+        private void Arm(int milliseconds)
+        {
+            lock (deadlineGate)
+                deadline = milliseconds == 0 ? 0 : Stopwatch.GetTimestamp() + (long)(Stopwatch.Frequency * milliseconds / 1000.0);
         }
 
         private void Kill()
@@ -118,6 +150,10 @@ namespace KeepClear
             }
             catch (InvalidOperationException)
             {
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                Diagnostics.Failure("model-termination", ex);
             }
         }
 
@@ -137,21 +173,32 @@ namespace KeepClear
         {
             try
             {
-                using (var timer = new Timer(TimeoutKill, null, 2000, Timeout.Infinite))
+                Arm(2000);
+                try
                 {
-                    var bytes = new byte[samples.Length * 4];
-                    Buffer.BlockCopy(samples, 0, bytes, 0, bytes.Length);
+                    int byteCount = samples.Length * 4;
+                    if (inputBytes.Length < byteCount) Array.Resize(ref inputBytes, byteCount);
+                    Buffer.BlockCopy(samples, 0, inputBytes, 0, byteCount);
                     writer.Write(samples.Length);
-                    writer.Write(bytes);
+                    writer.Write(inputBytes, 0, byteCount);
                     writer.Flush();
                     int frames = reader.ReadInt32();
                     if (frames < 0 || frames > 32000)
                         throw new InvalidDataException("模型返回的采样数量超出协议范围。");
-                    bytes = ReadExactly(frames * 4);
+                    byteCount = frames * 4;
+                    if (outputBytes.Length < byteCount) Array.Resize(ref outputBytes, byteCount);
+                    int offset = 0;
+                    while (offset < byteCount)
+                    {
+                        int read = reader.BaseStream.Read(outputBytes, offset, byteCount - offset);
+                        if (read == 0) throw new EndOfStreamException("模型进程已退出或音频回复被截断。");
+                        offset += read;
+                    }
                     var result = new float[frames];
-                    Buffer.BlockCopy(bytes, 0, result, 0, bytes.Length);
+                    Buffer.BlockCopy(outputBytes, 0, result, 0, byteCount);
                     return result;
                 }
+                finally { Arm(0); }
             }
             catch (Exception ex)
             {
@@ -161,6 +208,8 @@ namespace KeepClear
 
         public void Dispose()
         {
+            watchdog.Dispose();
+            Arm(0);
             cancellation.Dispose();
             Kill();
             DrainExit();

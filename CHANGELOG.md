@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.3.1 — 2026-11-16
+
+- Center tray Exit text using the current item bounds and scaled padding; regression-check stale text rectangles across DPI scales and enabled/disabled states.
+
+- Optimize DNS48 CPU streaming through ATen with at most two compute threads, one interop thread and denormal flushing. Retain float32, weights, full denoising strength and streaming model parameters. Add CPU backend diagnostics.
+- Recalculate native owner-drawn selector item height on handle/font/DPI changes and align Refresh after layout. Normalize the tray Exit menu font/padding on opening, omit unused icon margins and log actual popup metrics. Extend DPI regression checks to selector text height and repeated popup opening.
+
+- Simplify only the startup audio stream test to connectivity: require capture, dual-model output, successful output submission and matching VB-CABLE readback. Remove throughput thresholds and the second performance observation. Ignore timing/underrun/queue fluctuations during that silent test; retain the other startup checks.
+
+- Monitor total queued audio using one-second averages and sustained growth. Stable 70–80 ms and brief 120 ms peaks continue. Prefer quiet-span removal during recovery; reserve processed-output skipping for approximately 500 ms capacity pressure. Remove the one-second recovery failure and 30-second cooldown stop. Preserve model input order and hard resource limits.
+- Reuse C#/Python IPC byte buffers and a single per-worker timeout watchdog. Use AboveNormal scheduling for the processing thread and model process; retain MMCSS Audio on device threads.
+- Add per-second processing/queue/underrun/discontinuity/GC diagnostics, model-stage timings, session build/CPU identity and DPI layout metrics. Replace the CPU-load assumption in backlog advice with a direct stream-backlog explanation. No microphone audio is logged.
+- Establish a 96-DPI design baseline, explicit .NET Framework 4.8 targeting and PerMonitorV2 configuration; scale fixed logical window bounds, startup controls, wordmark/cursor and meters consistently.
+- Treat an absent driver-state directory as an already-cleared state.
+- Pass 180 C# and 8 Python checks, bilingual UI regressions and 60 simulated DPI/state/language layout checks. Actual remote-PC DPI transitions and long gaming sessions still require retesting.
+- Retain the original Alkove Focus → Denoiser DNS48 model order, parameters, weights, third-party runtime and bundled driver archive.
+
 ## v0.3.0 — 2026-11-15
 
 ### First public KeepClear release

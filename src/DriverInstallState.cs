@@ -120,6 +120,10 @@ namespace KeepClear
             {
                 File.Delete(path);
             }
+            catch (DirectoryNotFoundException)
+            {
+                // A first run with an already-ready driver has no state to remove.
+            }
             catch (IOException ex)
             {
                 Diagnostics.Failure("driver-state-cleanup", ex);

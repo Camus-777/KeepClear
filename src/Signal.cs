@@ -83,6 +83,59 @@ namespace KeepClear
                 return n;
             }
         }
+
+        internal int KeepLatest(int wanted)
+        {
+            return KeepLatest(wanted, 0);
+        }
+
+        internal int KeepLatest(int wanted, int fadeSamples)
+        {
+            lock (gate)
+            {
+                int discard = Math.Max(0, count - Math.Max(0, wanted));
+                int blend = Math.Min(fadeSamples, Math.Min(discard, count - discard));
+                for (int i = 0; i < blend; i++)
+                {
+                    float fraction = (float)i / Math.Max(1, blend - 1);
+                    int target = (head + discard + i) % data.Length;
+                    data[target] = data[(head + i) % data.Length] * (1 - fraction) + data[target] * fraction;
+                }
+                head = (head + discard) % data.Length;
+                count -= discard;
+                return discard;
+            }
+        }
+
+        // Remove a confirmed quiet run while retaining every voiced sample.
+        internal int TrimSilence(int wanted, int minimumRun, float threshold)
+        {
+            lock (gate)
+            {
+                int removable = Math.Max(0, count - wanted), run = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    if (Math.Abs(data[(head + i) % data.Length]) <= threshold) run++;
+                    else
+                    {
+                        if (run >= minimumRun) return RemoveRun(i - run, Math.Min(run, removable));
+                        run = 0;
+                    }
+                    if (run >= minimumRun && run >= removable)
+                        return RemoveRun(i - run + 1, removable);
+                }
+                return run >= minimumRun ? RemoveRun(count - run, Math.Min(run, removable)) : 0;
+            }
+        }
+
+        private int RemoveRun(int start, int length)
+        {
+            for (int i = start; i < count - length; i++)
+                data[(head + i) % data.Length] = data[(head + i + length) % data.Length];
+            count -= length;
+            return length;
+        }
+
     }
 
     // Stateful, windowed-sinc polyphase FIR. Preserves phase across packet boundaries.

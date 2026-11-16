@@ -11,12 +11,12 @@ using System.Windows.Forms;
 
 namespace KeepClear
 {
-    internal sealed class StartupForm : Form
+    internal sealed class StartupForm : DpiFixedForm
     {
         private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
         private readonly Stopwatch clock = Stopwatch.StartNew();
         private readonly CancellationTokenSource cancellation = new CancellationTokenSource();
-        private readonly Font brand = new Font("Segoe UI Semibold", 40, FontStyle.Regular);
+        private readonly Font brand = new Font("Segoe UI Semibold", 160f / 3f, FontStyle.Regular, GraphicsUnit.Pixel);
         private readonly Label status = new Label(), detail = new Label();
         private readonly Button retry = new Button(), exit = new Button(), restart = new Button(), language = new Button();
         private readonly ComboBox microphone = new DeviceComboBox();
@@ -67,7 +67,7 @@ namespace KeepClear
         {
         }
 
-        internal StartupForm(Func<Action<string>, CancellationToken, StartupResult> check, bool english, Func<bool> confirmRestart, Func<int> restartWindows, Action<string> saveLanguage = null, Func<string, Action<string>, CancellationToken, StartupResult> audioCheck = null, Func<AudioDevice[]> microphones = null, Func<string> savedInput = null, Action<string> saveInput = null)
+        internal StartupForm(Func<Action<string>, CancellationToken, StartupResult> check, bool english, Func<bool> confirmRestart, Func<int> restartWindows, Action<string> saveLanguage = null, Func<string, Action<string>, CancellationToken, StartupResult> audioCheck = null, Func<AudioDevice[]> microphones = null, Func<string> savedInput = null, Action<string> saveInput = null) : base(new Size(480, 280))
         {
             this.check = check;
             this.english = english;
@@ -93,6 +93,7 @@ namespace KeepClear
             };
             AutoScaleMode = AutoScaleMode.Dpi;
             Font = new Font("Microsoft YaHei UI", 9);
+            AutoScaleDimensions = new SizeF(96, 96);
             Text = "KeepClear";
             ClientSize = new Size(480, 280);
             FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -102,9 +103,9 @@ namespace KeepClear
             BackColor = Color.White;
             DoubleBuffered = true;
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-            status.SetBounds(16, 186, 448, 24);
+            SetLogicalBounds(status, 16, 186, 448, 24);
             status.TextAlign = ContentAlignment.MiddleCenter;
-            detail.SetBounds(16, 210, 448, 34);
+            SetLogicalBounds(detail, 16, 210, 448, 34);
             detail.Font = new Font(Font.FontFamily, 8);
             detail.TextAlign = ContentAlignment.MiddleCenter;
             detail.Click += delegate
@@ -112,18 +113,18 @@ namespace KeepClear
                 if (result != null && !result.Ready && (result.Status != "select-microphone" || !String.IsNullOrEmpty(microphoneError)) && Directory.Exists(Diagnostics.Folder))
                     Process.Start(new ProcessStartInfo("explorer.exe", "\"" + Diagnostics.Folder + "\"") { UseShellExecute = true });
             };
-            retry.SetBounds(146, 246, 92, 26);
-            restart.SetBounds(146, 246, 92, 26);
-            exit.SetBounds(246, 246, 88, 26);
+            SetLogicalBounds(retry, 146, 246, 92, 26);
+            SetLogicalBounds(restart, 146, 246, 92, 26);
+            SetLogicalBounds(exit, 246, 246, 88, 26);
             language.Name = "startupLanguage";
-            language.SetBounds(380, 12, 72, 28);
+            SetLogicalBounds(language, 380, 12, 72, 28);
             microphone.Name = "startupMicrophone";
             microphone.DropDownStyle = ComboBoxStyle.DropDownList;
             microphone.ItemHeight = 26;
-            microphone.SetBounds(28, 164, 344, 32);
+            SetLogicalBounds(microphone, 28, 164, 344, 32);
             microphone.DropDownWidth = microphone.Width;
             refreshMicrophone.Name = "refreshMicrophone";
-            refreshMicrophone.SetBounds(382, 164, 70, microphone.Height);
+            SetLogicalBounds(refreshMicrophone, 382, 164, 70, microphone.Height);
             microphone.SizeChanged += delegate
             {
                 microphone.DropDownWidth = microphone.Width;
@@ -196,7 +197,6 @@ namespace KeepClear
             timer.Start();
             Shown += async delegate
             {
-                MinimumSize = MaximumSize = Size;
                 await StartCheck();
             };
             FormClosed += delegate
@@ -323,14 +323,14 @@ namespace KeepClear
             result = null;
             restartError = null;
             retry.Visible = exit.Visible = restart.Visible = language.Visible = microphone.Visible = refreshMicrophone.Visible = false;
-            status.SetBounds(16, 186, 448, 24);
-            detail.SetBounds(16, 210, 448, 34);
+            SetLogicalBounds(status, 16, 186, 448, 24);
+            SetLogicalBounds(detail, 16, 210, 448, 34);
             status.TextAlign = detail.TextAlign = ContentAlignment.MiddleCenter;
             detail.ForeColor = Color.Black;
             StyleButton(retry, false);
-            retry.SetBounds(146, 246, 92, 26);
-            restart.SetBounds(146, 246, 92, 26);
-            exit.SetBounds(246, 246, 88, 26);
+            SetLogicalBounds(retry, 146, 246, 92, 26);
+            SetLogicalBounds(restart, 146, 246, 92, 26);
+            SetLogicalBounds(exit, 246, 246, 88, 26);
             retry.Enabled = true;
             typingDuration = testMicrophone ? 2.6 : 1.8;
             clock.Restart();
@@ -408,9 +408,9 @@ namespace KeepClear
                 exit.Visible = language.Visible = true;
                 if (completed.Status == "driver-pending")
                 {
-                    retry.SetBounds(96, 246, 92, 26);
-                    restart.SetBounds(194, 246, 92, 26);
-                    exit.SetBounds(292, 246, 88, 26);
+                    SetLogicalBounds(retry, 96, 246, 92, 26);
+                    SetLogicalBounds(restart, 194, 246, 92, 26);
+                    SetLogicalBounds(exit, 292, 246, 88, 26);
                 }
             }
 
@@ -447,14 +447,14 @@ namespace KeepClear
             if (completed.ChooseMicrophone)
             {
                 bool failed = completed.FailureKind != AudioFailureKind.None || !String.IsNullOrEmpty(microphoneError);
-                status.SetBounds(28, failed ? 124 : 140, 424, failed ? 24 : 20);
-                microphone.SetBounds(28, failed ? 154 : 164, 344, 32);
-                refreshMicrophone.SetBounds(382, microphone.Top, 70, microphone.Height);
-                detail.SetBounds(28, failed ? 186 : 200, 424, failed ? 48 : 22);
+                SetLogicalBounds(status, 28, failed ? 124 : 140, 424, failed ? 24 : 20);
+                SetLogicalBounds(microphone, 28, failed ? 154 : 164, 344, 32);
+                refreshMicrophone.SetBounds(Px(382), microphone.Top, Px(70), microphone.Height);
+                SetLogicalBounds(detail, 28, failed ? 186 : 200, 424, failed ? 48 : 22);
                 status.TextAlign = detail.TextAlign = ContentAlignment.MiddleLeft;
                 detail.ForeColor = Color.FromArgb(96, 107, 120);
-                retry.SetBounds(28, failed ? 240 : 232, 306, failed ? 32 : 34);
-                exit.SetBounds(344, retry.Top, 108, retry.Height);
+                SetLogicalBounds(retry, 28, failed ? 240 : 232, 306, failed ? 32 : 34);
+                exit.SetBounds(Px(344), retry.Top, Px(108), retry.Height);
                 StyleButton(retry, true);
                 if (completed.Status == "select-microphone")
                     status.Text = T("选择用于自检的麦克风", "Choose your microphone before testing");
@@ -470,6 +470,9 @@ namespace KeepClear
                 }
 
                 microphone.AccessibleName = T("自检麦克风", "Microphone for startup test");
+                // The native combo can restore its cached width while adjusting
+                // height for new error text/fonts. Apply width after that pass.
+                microphone.Width = Px(344);
             }
 
             Invalidate();
@@ -480,11 +483,13 @@ namespace KeepClear
             base.OnPaint(e);
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            var canvas = g.Save();
+            g.ScaleTransform(LayoutScale, LayoutScale);
             using (var format = (StringFormat)StringFormat.GenericTypographic.Clone())
             {
                 string text = "KeepClear";
                 float width = g.MeasureString(text, brand, PointF.Empty, format).Width;
-                float x = (ClientSize.Width - width - 12) / 2f, y = (result != null && result.ChooseMicrophone ? 80 : ClientSize.Height * 0.47f) - brand.GetHeight(g) * 0.5f;
+                float x = (ClientSize.Width / LayoutScale - width - 12) / 2f, y = (result != null && result.ChooseMicrophone ? 80 : ClientSize.Height / LayoutScale * 0.47f) - brand.GetHeight(g) * 0.5f;
                 double elapsed = clock.Elapsed.TotalSeconds, progress = Math.Max(0, Math.Min(1, (elapsed - 0.28) / typingDuration));
                 int[] weights =
                 {
@@ -526,6 +531,22 @@ namespace KeepClear
                 using (var blue = new SolidBrush(Color.FromArgb((int)(255 * opacity), 22, 102, 197)))
                     g.FillRectangle(blue, x + reveal + 5, y + brand.GetHeight(g) * 0.17f, 3, brand.GetHeight(g) * 0.69f);
             }
+            g.Restore(canvas);
+        }
+
+        protected override void ArrangeForDpi()
+        {
+            SetLogicalBounds(status, 16, 186, 448, 24);
+            SetLogicalBounds(detail, 16, 210, 448, 34);
+            SetLogicalBounds(retry, 146, 246, 92, 26);
+            SetLogicalBounds(restart, 146, 246, 92, 26);
+            SetLogicalBounds(exit, 246, 246, 88, 26);
+            SetLogicalBounds(language, 380, 12, 72, 28);
+            microphone.ItemHeight = Px(26);
+            SetLogicalBounds(microphone, 28, 164, 344, 32);
+            SetLogicalBounds(refreshMicrophone, 382, 164, 70, 32);
+            ApplyLanguage();
+            Invalidate();
         }
 
         protected override void Dispose(bool disposing)

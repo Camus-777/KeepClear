@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 import struct
 import sys
+import json
+import time
 
 RATE = 16000
 MAX_SAMPLES = 32000
@@ -18,16 +20,31 @@ DNS_SHA = "11decc9d8e3f0998a64caed6b57b68a40cb200a627996a636625f20bdb91f1d6"
 
 
 class SerialChain:
-    def __init__(self, stages):
+    def __init__(self, stages, metrics=False):
         self.stages = stages
+        self.metrics = metrics
+        self.report_at = time.perf_counter()
+        self.stage_times = {}
 
     def process(self, pcm):
         for stage in self.stages:
             if not pcm:
                 break
+            started = time.perf_counter() if self.metrics else 0
             pcm = stage.process(pcm)
+            if self.metrics:
+                elapsed = (time.perf_counter() - started) * 1000
+                values = self.stage_times.setdefault(type(stage).__name__, [0, 0.0, 0.0])
+                values[0] += 1
+                values[1] += elapsed
+                values[2] = max(values[2], elapsed)
             if len(pcm) > MAX_SAMPLES or any(not math.isfinite(x) for x in pcm):
                 raise ValueError("model returned invalid PCM")
+        if self.metrics and time.perf_counter() - self.report_at >= 1:
+            report = {name: {"calls": v[0], "mean_ms": round(v[1] / v[0], 3), "max_ms": round(v[2], 3)} for name, v in self.stage_times.items()}
+            print("KC_METRIC " + json.dumps(report), file=sys.stderr, flush=True)
+            self.stage_times.clear()
+            self.report_at = time.perf_counter()
         return pcm
 
 
@@ -67,7 +84,11 @@ class DenoiserStage:
         if digest.hexdigest() != DNS_SHA:
             raise ValueError("Denoiser DNS48 权重校验失败，请重新运行模型准备步骤")
         self.torch = torch
-        torch.set_num_threads(1)
+        # Small streaming CPU frames run faster through ATen than oneDNN's
+        # recurrent dispatch on the tested Ryzen host. Keep float32 inference.
+        torch.backends.mkldnn.enabled = False
+        self.flush_denormal = torch.set_flush_denormal(True)
+        torch.set_num_threads(2 if (os.cpu_count() or 1) >= 4 else 1)
         if torch.get_num_interop_threads() != 1:
             torch.set_num_interop_threads(1)
         # Only tensor state dictionaries: no arbitrary pickled model execution.
@@ -81,6 +102,8 @@ class DenoiserStage:
             warmup = DemucsStreamer(model, dry=0, num_frames=1)
             warmup.feed(torch.zeros(1, 4096))
         self.streamer = DemucsStreamer(model, dry=0, num_frames=1)
+        print("KC_CPU " + json.dumps({"torch": torch.__version__, "backend": "aten", "threads": torch.get_num_threads(),
+            "interop_threads": torch.get_num_interop_threads(), "flush_denormal": self.flush_denormal}), file=sys.stderr, flush=True)
 
     def process(self, pcm):
         with self.torch.inference_mode():
@@ -137,7 +160,7 @@ def main():
             stages.append(AlkoveStage(os.path.join(args.models, "alkove")))
         if args.denoiser:
             stages.append(DenoiserStage(os.path.join(args.models, "denoiser", "dns48-state.pt")))
-    serve(SerialChain(stages), sys.stdin.buffer, output)
+    serve(SerialChain(stages, metrics=True), sys.stdin.buffer, output)
 
 
 if __name__ == "__main__":

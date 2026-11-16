@@ -1,18 +1,22 @@
-# KeepClear v0.3.0 validation
+# KeepClear v0.3.1 validation
 
-Prepared 2026-11-15 for the first public KeepClear（保持清晰）release. The executable is rebuilt after the two release-review findings were addressed under the first-release scope.
+Prepared 2026-11-16. This repair release addresses runtime queue trends, startup connectivity and consistent DPI layout. It is tested locally without microphone capture or driver installation.
 
 | Check | Result |
 | --- | --- |
-| Native C# checks | 155 passed: the 147-check baseline plus 8 output-selection regressions; the 4 development-name compatibility checks were removed with that compatibility code |
+| Native C# checks | 180 passed: 155 baseline checks plus 25 trend/recovery/FIFO/timeline regressions |
 | Python worker checks | 8 passed |
-| First-release settings/state | KeepClear reads only its own settings and installation state, uses its own single-instance and installation locks, and performs no development-name migration |
-| Output selection | Regular verified CABLE Input preferred on first use or missing saved output, including renamed endpoints; valid saved choices retained; optional metadata failure and single-endpoint fallback covered |
-| Live endpoint metadata | Read-only local enumeration confirmed regular CABLE Input is Speakers, CABLE In 16ch is LineLevel, and the regular endpoint is selected without opening an audio stream |
-| Main/startup/choice interfaces | English and Simplified Chinese fixtures rerun for fixed dimensions, selectors, monitor availability, tray/instance behavior, microphone handoff and animation replay |
-| Audio processing | Alkove Focus → Denoiser DNS48, 16 kHz mono, 256-sample blocks, model parameters and original weights retained |
-| Driver | Original embedded VB-CABLE installer unchanged; hardware/service identity remains required; optional endpoint type is used only to rank already verified outputs |
+| Startup audio connectivity | Capture, dual-model output, successful processed-output submission and matching CABLE readback are required; timing/underrun/queue metrics do not gate entry; genuine faults still block |
+| Runtime recovery | Stable 70–80 ms and brief 120 ms peaks continue; slow/fast sustained growth triggers recovery; 350 ms stalls retain all simulated voice samples; quiet-span trimming preserves voiced order; true input exhaustion remains bounded |
+| CPU inference repair | ATen execution with up to 2 compute threads and denormal flushing; synthetic tone/silence/tiny/decay profiles and full-chain mixed synthetic speech compared numerically; local mean 8.61 to 4.47 ms per block, P99 10.17 to 6.24 ms; reported Ryzen H 260 still requires retesting |
+| Protocol and lifecycle | Exact PCM round trips, repeated packets, cancellation and bounded stalled-worker timeout retained |
+| Main/startup/choice UI | English and Simplified Chinese fixtures check fixed bounds, selectors, monitoring, tray/instance behavior, microphone handoff and animation replay |
+| DPI layout | 60 simulated layout checks across 96/120/144/168/192 DPI and return to 96, both languages, main/selection/restart/pending/error states; selector text/item heights and refresh alignment checked; tray font drift is corrected across repeated openings and the actual popup is rendered at the host DPI, logged separately |
+| Audio processing | Fixed Alkove Focus → Denoiser DNS48, 16 kHz mono, 256-sample blocks, original weights and model parameters retained |
+| Driver and configuration | Original embedded installer and hardware/service identity rules retained; expected absence of the state directory no longer logs an error |
 
-Release packaging separately verifies the actual executable, isolated runtime relocation, native DLL origins, synthetic dual-model processing, all archive members and SHA256 manifests. The local material verification report records these results. No microphone capture, driver installation, OS restart or GitHub upload is performed. Fresh-PC installation, subjective audio quality and long-duration gaming remain unverified. The executable is unsigned.
+Release packaging separately verifies every manifest entry, archive member, model/runtime/driver hash, isolated runtime relocation, native DLL origins and synthetic processing through the shipped C# → Python → dual-model path. The local material report records the measured results and release hashes.
 
-First-release configuration and output-selection rules are documented in [RENAMING.md](RENAMING.md).
+DPI fixtures simulate dimensions and font scaling; they do not replace real multi-monitor/remote-desktop DPI transitions. Synthetic audio is not speech-quality evaluation, microphone capture or a game-load test. The two user-reported PCs, fresh-PC driver installation and long-duration gaming remain to be retested. No driver setup, Windows restart or GitHub upload is performed. The executable is unsigned.
+
+Recovery behavior is documented in [REPAIR-0.3.1.md](REPAIR-0.3.1.md); first-release settings and output selection remain as described in [RENAMING.md](RENAMING.md).

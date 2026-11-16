@@ -11,6 +11,7 @@ namespace KeepClear
         [STAThread]
         private static int Main(string[] args)
         {
+            Diagnostics.Session();
             if (args.Length == 2 && args[0] == "--self-test")
                 return SelfTest.Run(args[1]);
             if ((args.Length == 2 && args[0] == "--check-startup") || ((args.Length == 2 || args.Length == 3) && args[0] == "--check-audio"))

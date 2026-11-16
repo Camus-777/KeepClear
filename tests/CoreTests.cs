@@ -97,6 +97,11 @@ namespace KeepClear
         {
             try
             {
+                if (args.Length > 0 && args[0] == "--dpi-ui")
+                {
+                    DpiTests.Run(args.Length > 1 ? args[1] : "dpi-ui");
+                    return 0;
+                }
                 if (args.Length == 3 && args[0] == "--instance-secondary")
                 {
                     using (var instance = new SingleInstance(args[1]))
@@ -180,6 +185,7 @@ namespace KeepClear
                 StartupOptimizationTests.Run(Check);
                 MaintenanceTests.Run(Check);
                 OutputSelectionTests.Run(Check);
+                RepairTests.Run(Check);
                 ReliabilityTests.Run(Check);
                 string instanceKey = "KeepClear.Test." + Guid.NewGuid().ToString("N");
                 string instanceReport = Path.Combine(Path.GetTempPath(), instanceKey + ".txt");

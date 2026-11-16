@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Reflection;
+using Microsoft.Win32;
 
 namespace KeepClear
 {
@@ -40,6 +42,19 @@ namespace KeepClear
         internal static string Code(Exception error)
         {
             return "0x" + error.HResult.ToString("X8");
+        }
+
+        internal static void Session()
+        {
+            try
+            {
+                string cpu = "unknown";
+                using (var key = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0"))
+                    if (key != null) cpu = Convert.ToString(key.GetValue("ProcessorNameString"));
+                var assembly = Assembly.GetExecutingAssembly();
+                Write("session", "version=" + assembly.GetName().Version + " build=" + assembly.ManifestModule.ModuleVersionId + " os=" + Environment.OSVersion + " runtime=" + Environment.Version + " cpu=" + cpu.Trim() + " logical_processors=" + Environment.ProcessorCount);
+            }
+            catch (Exception ex) { Failure("session-info", ex); }
         }
     }
 }

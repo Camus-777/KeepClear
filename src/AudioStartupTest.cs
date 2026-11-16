@@ -21,10 +21,11 @@ namespace KeepClear
                 ?? cable.FirstOrDefault();
         }
 
-        internal static bool MeetsThroughput(EngineSnapshot current, EngineSnapshot baseline, double seconds)
+        internal static bool HasFlow(EngineSnapshot current, long readbackFrames)
         {
-            long blocks = current.Blocks - baseline.Blocks, samples = current.ProcessedSamples - baseline.ProcessedSamples;
-            return seconds >= 2.5 && blocks >= seconds * 62.5 * 0.8 && samples >= seconds * 16000 * 0.75 && current.CaptureFrames > baseline.CaptureFrames && current.RenderFrames > baseline.RenderFrames && current.TotalProcessMs - baseline.TotalProcessMs < seconds * 1000 && current.InputQueueMs < 128 && current.OutputQueueMs < 192 && current.Underruns == baseline.Underruns;
+            return current.State == "运行中" && String.IsNullOrEmpty(current.Error)
+                && current.CaptureFrames > 0 && current.ProcessedSamples > 0
+                && current.ProcessedRenderFrames > 0 && readbackFrames > 0;
         }
 
         internal static StartupResult Run(string root, AppSettings settings, string selectedInput, Action<string> progress, CancellationToken token)
@@ -48,44 +49,25 @@ namespace KeepClear
             {
                 engine.Start();
                 var timeout = Stopwatch.StartNew();
-                AudioObservation observation = null;
-                EngineSnapshot current = null;
+                progress("testing-audio");
                 while (timeout.ElapsedMilliseconds < 55000)
                 {
                     token.ThrowIfCancellationRequested();
                     reader.ThrowIfFailed();
-                    current = engine.Snapshot();
+                    var current = engine.Snapshot();
                     if (!String.IsNullOrEmpty(current.Error))
                         throw new AudioFailureException(current.FailureKind, current.Error);
-                    if (current.State == "运行中" && current.ProcessedSamples >= 2048 && reader.Frames > 0 && observation == null)
+                    if (HasFlow(current, reader.Frames))
                     {
-                        observation = new AudioObservation(current, reader.Frames, timeout.Elapsed.TotalSeconds);
-                        progress("testing-audio");
-                    }
-
-                    if (observation != null)
-                    {
-                        ObservationResult verdict = observation.Observe(current, reader.Frames, reader.Rate, timeout.Elapsed.TotalSeconds);
-                        if (verdict == ObservationResult.Recovering)
+                        Diagnostics.Write("audio-test", "PASS mode=connectivity-only blocks=" + current.Blocks + " processed=" + current.ProcessedSamples + " processed_render_frames=" + current.ProcessedRenderFrames + " readback_frames=" + reader.Frames + " input_queue_ms=" + current.InputQueueMs + " output_queue_ms=" + current.OutputQueueMs + " total_underruns=" + current.Underruns);
+                        return new StartupResult
                         {
-                            progress("recovering-audio");
-                            Diagnostics.Write("audio-test", "Transient throughput failure; one recovery window only. blocks=" + current.Blocks + " underruns=" + current.Underruns + " input_queue_ms=" + current.InputQueueMs + " output_queue_ms=" + current.OutputQueueMs);
-                        }
-
-                        if (verdict == ObservationResult.Failed)
-                            throw new AudioFailureException(AudioFailureKind.Slow, "Audio throughput failed again after one bounded recovery window.");
-                        if (verdict == ObservationResult.Passed)
-                        {
-                            Diagnostics.Write("audio-test", "PASS recovery_used=" + observation.RecoveryUsed + " blocks=" + current.Blocks + " processed=" + current.ProcessedSamples + " readback_frames=" + reader.Frames + " input_queue_ms=" + current.InputQueueMs + " output_queue_ms=" + current.OutputQueueMs + " total_underruns=" + current.Underruns);
-                            return new StartupResult
-                            {
-                                Ready = true,
-                                Status = "ready",
-                                InputId = input.Id,
-                                OutputId = output.Id,
-                                InputMuted = muted == true
-                            };
-                        }
+                            Ready = true,
+                            Status = "ready",
+                            InputId = input.Id,
+                            OutputId = output.Id,
+                            InputMuted = muted == true
+                        };
                     }
 
                     Thread.Sleep(20);
@@ -101,7 +83,6 @@ namespace KeepClear
             private readonly Thread thread;
             private Exception error;
             private long frames;
-            internal int Rate;
             internal long Frames
             {
                 get
@@ -134,7 +115,6 @@ namespace KeepClear
                 {
                     using (var endpoint = new AudioEndpoint(id, true))
                     {
-                        Rate = endpoint.Format.Rate;
                         endpoint.Start();
                         while (!stop.IsCancellationRequested)
                         {
@@ -183,50 +163,4 @@ namespace KeepClear
         }
     }
 
-    internal enum ObservationResult
-    {
-        Observing,
-        Recovering,
-        Passed,
-        Failed
-    }
-
-    internal sealed class AudioObservation
-    {
-        private EngineSnapshot baseline;
-        private long readFrames;
-        private double started, settleUntil;
-        internal bool RecoveryUsed { get; private set; }
-
-        internal AudioObservation(EngineSnapshot initial, long frames, double now)
-        {
-            baseline = initial;
-            readFrames = frames;
-            started = now;
-        }
-
-        internal ObservationResult Observe(EngineSnapshot current, long frames, int rate, double now)
-        {
-            if (baseline == null)
-            {
-                if (now < settleUntil)
-                    return ObservationResult.Observing;
-                baseline = current;
-                readFrames = frames;
-                started = now;
-            }
-
-            double seconds = now - started;
-            if (seconds < 2.5)
-                return ObservationResult.Observing;
-            if (AudioStartupTest.MeetsThroughput(current, baseline, seconds) && frames - readFrames >= rate * seconds * 0.75)
-                return ObservationResult.Passed;
-            if (RecoveryUsed)
-                return ObservationResult.Failed;
-            RecoveryUsed = true;
-            baseline = null;
-            settleUntil = now + 0.5;
-            return ObservationResult.Recovering;
-        }
-    }
 }

@@ -144,23 +144,38 @@ def main():
         shutil.copy2(ROOT / name, output / name)
     shutil.copy2(ROOT / "docs" / "PORTABLE-QUICKSTART.txt", output / "开始使用.txt")
     manifest = {
-        "format": 1, "application": "KeepClear", "version": "0.3.0", "architecture": "Windows x64",
+        "format": 1, "application": "KeepClear", "version": "0.3.1", "architecture": "Windows x64",
         "python": {"version": PYTHON_VERSION, "source": EMBED_URL, "sha256": EMBED_SHA},
         "packages": packages, "omitted_build_bytes": omitted_bytes,
         "cpp_runtime_alias_source": cpp_source,
         "prerequisites": ["Windows 10/11 x64", ".NET Framework 4.8", "Windows administrator approval if VB-CABLE is missing"],
         "bundled_vbcable": {"resource": "KeepClear.VBCable.zip", "package": "VBCABLE_Driver_Pack46.zip", "sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90", "origin": "https://vb-audio.com/Cable/"},
         "publication": {
-            "date": "2026-11-15", "release_tag": "v0.3.0", "original_project_license": "CC-BY-NC-4.0",
+            "date": "2026-11-16", "release_tag": "v0.3.1", "original_project_license": "CC-BY-NC-4.0",
             "copyright_notice": "NOTICE",
-            "changes": "First public KeepClear release with KeepClear-only settings and installation state, and regular verified CABLE Input preference. Original model weights, runtime libraries and VB-CABLE driver archive retained.",
+            "changes": "ATen CPU streaming with up to two compute threads, denormal flushing and execution diagnostics; DPI-aware device selector heights, aligned Refresh and fixed-point tray menu typography with text centered from current item bounds. Connectivity startup checks, queue-trend recovery, model weights, float32 model parameters, runtime libraries and bundled VB-CABLE retained.",
         },
         "startup_audio_check": {
             "gui_each_primary_startup": True, "requires_microphone_confirmation": True,
             "automatic_microphone_fallback": False, "silent_render": True,
-            "observation_seconds": 2.5, "max_recovery_windows": 1, "recovery_settle_seconds": 0.5,
+            "mode": "connectivity-only", "performance_thresholds": False,
+            "requires_processed_output_submission": True, "audio_stage_timeout_seconds": 55,
+            "drops_stale_silent_test_samples": True,
             "driver_endpoint_wait_seconds": 20, "persistent_driver_pending_state": True,
             "text_logs": "%LOCALAPPDATA%/KeepClear/logs",
+        },
+        "cpu_inference": {
+            "backend": "aten", "max_compute_threads": 2, "parallel_min_logical_processors": 4,
+            "interop_threads": 1, "flush_denormal": True, "dtype": "float32",
+        },
+        "runtime_recovery": {
+            "mode": "total-queue-trend", "sample_ms": 100, "window_seconds": 1,
+            "growth_windows": 2, "minimum_window_growth_ms": 2, "cumulative_growth_ms": 20,
+            "growth_queue_ms": 200, "emergency_queue_ms": 500,
+            "input_capacity_ms": 512, "output_capacity_ms": 512, "normal_playback_reserve_ms": 48,
+            "quiet_span_ms": 20, "quiet_amplitude": 0.00001, "recovery_output_target_ms": 120,
+            "recovery_timeout_seconds": None, "cooldown_stop": False,
+            "preserve_model_input": True, "may_skip_stale_processed_output": True,
         },
         "files": {p.relative_to(output).as_posix(): sha256(p) for p in sorted(output.rglob("*")) if p.is_file()},
     }
