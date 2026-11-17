@@ -17,7 +17,8 @@ namespace KeepClear
         Readback,
         Format,
         Timeout,
-        Unknown
+        Unknown,
+        ModelTimeout
     }
 
     internal sealed class AudioFailureException : Exception
@@ -84,6 +85,8 @@ namespace KeepClear
                     return english ? "Local models could not load" : "本地模型加载失败";
                 case AudioFailureKind.ModelProcess:
                     return english ? "Model processing failed" : "模型处理失败";
+                case AudioFailureKind.ModelTimeout:
+                    return english ? "Model response timed out" : "模型响应超时";
                 case AudioFailureKind.Slow:
                     return english ? "Audio stream backlog did not recover" : "音频链路积压未能恢复";
                 case AudioFailureKind.InputTimeout:
@@ -115,6 +118,7 @@ namespace KeepClear
                 case AudioFailureKind.ModelLoad:
                     return english ? "Extract the complete package again; check runtime and model files." : "请重新解压完整运行包，检查运行组件和模型文件。";
                 case AudioFailureKind.ModelProcess:
+                case AudioFailureKind.ModelTimeout:
                     return english ? "Retry; if it fails again, open the diagnostic log." : "请重新检查；再次失败时查看诊断日志。";
                 case AudioFailureKind.Slow:
                     return english ? "Retry; open logs to identify processing, timing or device stalls." : "请重试，并查看日志定位处理、调度或设备停顿。";

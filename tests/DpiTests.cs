@@ -117,8 +117,8 @@ namespace KeepClear
             VerifyTrayText(directory);
             var report = new List<string>();
             foreach (bool english in new[] { false, true })
-            foreach (string mode in new[] { "main", "select-microphone", "restart-required", "driver-pending", "audio-failed" })
-            using (DpiFixedForm form = mode == "main"
+            foreach (string mode in new[] { "main", "auto-restart", "select-microphone", "restart-required", "driver-pending", "audio-failed" })
+            using (DpiFixedForm form = mode == "main" || mode == "auto-restart"
                 ? (DpiFixedForm)new MainForm(new AppSettings { Language = english ? "en" : "zh" }, s => { }, () => { })
                 : new StartupForm((p, t) => new StartupResult { Status = mode, ChooseMicrophone = mode == "select-microphone" || mode == "audio-failed", FailureKind = mode == "audio-failed" ? AudioFailureKind.Slow : AudioFailureKind.None, CanRetry = true }, english,
                     () => false, () => { throw new Exception("Unexpected restart"); }, s => { },
@@ -128,10 +128,23 @@ namespace KeepClear
                 form.StartPosition = FormStartPosition.Manual;
                 form.Location = new Point(-30000, -30000);
                 form.Show();
+                bool mainMode = mode == "main" || mode == "auto-restart";
+                CancellationTokenSource recoverySource = null;
+                if (mode == "auto-restart")
+                {
+                    var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                    recoverySource = new CancellationTokenSource();
+                    typeof(MainForm).GetField("recoveryCancellation", flags).SetValue(form, recoverySource);
+                    typeof(MainForm).GetField("recovering", flags).SetValue(form, true);
+                    typeof(MainForm).GetField("busy", flags).SetValue(form, true);
+                    int delay;
+                    ((AutomaticRestart)typeof(MainForm).GetField("automaticRestart", flags).GetValue(form)).TryReserve(AudioFailureKind.Slow, out delay);
+                    typeof(MainForm).GetMethod("UpdateControls", flags).Invoke(form, null);
+                }
                 var wait = System.Diagnostics.Stopwatch.StartNew();
-                while (mode != "main" && ((StartupForm)form).Result == null && wait.ElapsedMilliseconds < 1500)
+                while (!mainMode && ((StartupForm)form).Result == null && wait.ElapsedMilliseconds < 1500)
                 { Application.DoEvents(); Thread.Sleep(10); }
-                if (mode != "main")
+                if (!mainMode)
                 {
                     typeof(StartupForm).GetField("typingDuration", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(form, 0.001);
                     Thread.Sleep(350);
@@ -141,8 +154,8 @@ namespace KeepClear
                 {
                     string popupMetrics = "";
                     Simulate(form, dpi);
-                    Verify(form, new Size(480, mode == "main" ? 456 : 280), dpi);
-                    if (mode == "main")
+                    Verify(form, new Size(480, mainMode ? 456 : 280), dpi);
+                    if (mainMode)
                     {
                         var main = (MainForm)form;
                         var flags = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -182,6 +195,12 @@ namespace KeepClear
                         bitmap.Save(Path.Combine(directory, name + ".png"));
                     }
                     report.Add("PASS " + name + " " + form.ClientSize + popupMetrics);
+                }
+                if (recoverySource != null)
+                {
+                    typeof(MainForm).GetField("recovering", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(form, false);
+                    typeof(MainForm).GetField("recoveryCancellation", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(form, null);
+                    recoverySource.Dispose();
                 }
             }
             File.WriteAllLines(Path.Combine(directory, "dpi-layout.txt"), report);

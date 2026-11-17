@@ -16,10 +16,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-0.3.2-007ec6" height="20" alt="Version 0.3.2">
+  <img src="https://img.shields.io/badge/Version-0.3.3-007ec6" height="20" alt="Version 0.3.3">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-007ec6" height="20" alt="Windows 10/11 x64">
   <img src="https://img.shields.io/badge/Audio-WASAPI%2016kHz-4c1" height="20" alt="WASAPI 16kHz">
-  <img src="https://img.shields.io/badge/Checks-202%20C%23%20%2B%2010%20Python%20Passed-4c1" height="20" alt="Tests Passed">
+  <img src="https://img.shields.io/badge/Checks-229%20C%23%20%2B%2010%20Python%20Passed-4c1" height="20" alt="Tests Passed">
   <img src="https://img.shields.io/badge/License-CC%20BY--NC%204.0-9f9f9f" height="20" alt="License CC BY-NC 4.0">
 </p>
 
@@ -54,13 +54,14 @@ All inference runs **100% locally and offline**. KeepClear does not save microph
 - **Confirmed Microphone & Silent Startup Test**: Each time you launch the main application, you select or confirm a microphone and are reminded to ensure it is enabled and unmuted. Clicking **Run test** checks the real audio stream through both models and VB-CABLE with silent output. If the selected device is unavailable, KeepClear does not automatically switch to another microphone. When no valid output selection is saved, the regular CABLE Input endpoint is preferred; an explicitly saved output remains selected.
 - **Smart VB-CABLE Detection & Repair**: Identifies VB-CABLE using the hardware ID and service specified in the bundled INF, verified through Windows endpoint topology. If the driver is missing or incomplete, KeepClear requests administrator approval to run the bundled installer. It saves pending initialization or restart status to avoid repeated installation attempts.
 - **Resilient Diagnostics & Recovery**: The startup audio test checks that capture, dual-model processing, processed-output submission and VB-CABLE readback all work; timing spikes, underruns and queue levels do not decide the result. Runtime processing monitors the trend of total software-queued audio. Stable latency and brief peaks continue playing. Sustained growth above approximately 200 ms triggers recovery, which first removes conservatively identified quiet spans while preserving model input continuity. Near 500 ms of queued audio, stale processed output may be skipped with a short crossfade. Repeated glitches do not impose a fixed recovery deadline or cooldown-based stop; device/model faults and exhausted input capacity still stop processing. Per-second timing and queue diagnostics help distinguish processing delays from scheduling or device stalls; unrelated device query errors are isolated. Troubleshooting advice is available in English and Simplified Chinese. Error messages provide clickable access to the diagnostic log folder at **%LOCALAPPDATA%/KeepClear/logs**.
+- **Automatic Audio Restart**: Recoverable runtime backlog, model-response timeouts and input/output callback timeouts trigger up to three automatic restarts, after complete cleanup and delays of 2, 5 and 15 seconds. Recovery retains the selected devices and restores monitoring when possible. Stop or Exit cancels pending recovery. Two uninterrupted healthy minutes replenish the retry budget. Cleanup failures, missing devices/models and permission errors require user action.
 - **Bilingual Tray Operation**: Instant **English/简体中文** switching (saved across sessions), single-instance protection, and background tray operation (left-click to restore, right-click and select Exit to quit).
 
 ---
 
 ## Download & Quick Start
 
-Download **KeepClear-0.3.2-win-x64.zip** from the **[Releases](../../releases)** page, extract the entire archive, and run **KeepClear.exe**. Requires **Windows 10/11 x64** and **.NET Framework 4.8**.
+Download **KeepClear-0.3.3-win-x64.zip** from the **[Releases](../../releases)** page, extract the entire archive, and run **KeepClear.exe**. Requires **Windows 10/11 x64** and **.NET Framework 4.8**.
 
 1. **Confirm & Test Microphone**: At startup, select your microphone, ensure it is on/unmuted, and click **Run test**. After the test passes, keep **CABLE Input** selected as the virtual output in the main window.
 2. **Start Processing**: Click **Start**, then set **CABLE Output** as your microphone in your game or calling app.

@@ -1,4 +1,4 @@
-KeepClear 0.3.2 · Windows x64 独立运行包
+KeepClear 0.3.3 · Windows x64 独立运行包
 
 1. 将整个文件夹解压到可写目录，双击 KeepClear.exe。
    不要只复制 EXE，也不要直接在压缩包内运行。

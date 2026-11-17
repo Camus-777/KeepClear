@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -139,7 +140,7 @@ namespace KeepClear
         private readonly Button refresh = new Button(), start = new Button(), listen = new Button(), language = new Button();
         private readonly Label inputLabel = new Label(), outputLabel = new Label(), monitorLabel = new Label(), inputLevelLabel = new Label(), outputLevelLabel = new Label(), hint = new Label(), state = new Label();
         private readonly Meter inputMeter = new Meter(), outputMeter = new Meter();
-        private readonly Timer timer = new Timer();
+        private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
         private readonly Stopwatch clock = Stopwatch.StartNew();
         private readonly AppSettings settings;
         private readonly Action<AppSettings> savePreferences;
@@ -153,7 +154,15 @@ namespace KeepClear
             AutoPopDelay = 20000
         };
         private readonly string root = AppDomain.CurrentDomain.BaseDirectory;
-        private AudioEngine engine;
+        private IAudioSession engine;
+        private readonly Func<EngineOptions, IAudioSession> createSession;
+        private readonly Func<int, CancellationToken, Task> recoveryWait;
+        private readonly Action streamFailureNotification;
+        private readonly AutomaticRestart automaticRestart = new AutomaticRestart();
+        private CancellationTokenSource recoveryCancellation;
+        private Task recoveryTask;
+        private EngineOptions activeOptions;
+        private bool processingWanted, recovering, recoveryCleanupFailed;
         private bool busy, closing, english, monitorWanted, exitRequested;
         private double lastTick;
         private string statusKey = "ready", noticeKey = "", lastError = "";
@@ -201,8 +210,13 @@ namespace KeepClear
         {
         }
 
-        internal MainForm(AppSettings preferences, Action<AppSettings> savePreferences, Action openLogs = null) : base(new Size(480, 456))
+        internal MainForm(AppSettings preferences, Action<AppSettings> savePreferences, Action openLogs = null,
+            Func<EngineOptions, IAudioSession> createSession = null, Func<int, CancellationToken, Task> recoveryWait = null,
+            Action streamFailureNotification = null) : base(new Size(480, 456))
         {
+            this.createSession = createSession ?? CreateSession;
+            this.recoveryWait = recoveryWait ?? ((milliseconds, token) => Task.Delay(milliseconds, token));
+            this.streamFailureNotification = streamFailureNotification;
             this.savePreferences = savePreferences;
             this.openLogs = openLogs ?? delegate
             {
@@ -385,6 +399,13 @@ namespace KeepClear
                     return;
                 if (args.CloseReason == CloseReason.WindowsShutDown || args.CloseReason == CloseReason.TaskManagerClosing)
                 {
+                    processingWanted = false;
+                    if (recovering)
+                    {
+                        args.Cancel = true;
+                        await ExitApplication();
+                        return;
+                    }
                     try
                     {
                         if (engine != null)
@@ -441,6 +462,8 @@ namespace KeepClear
         {
             if (disposing)
             {
+                processingWanted = false;
+                if (recoveryCancellation != null) recoveryCancellation.Cancel();
                 timer.Dispose();
                 tray.Visible = false;
                 tray.Dispose();
@@ -476,6 +499,15 @@ namespace KeepClear
             if (closing)
                 return;
             exitRequested = true;
+            processingWanted = false;
+            trayExit.Enabled = false;
+            if (recovering)
+            {
+                recoveryCancellation.Cancel();
+                UpdateControls();
+                await recoveryTask;
+                if (closing || IsDisposed) return;
+            }
             trayExit.Enabled = false;
             if (busy)
                 return; // In-flight start/stop/monitor completes before exit.
@@ -487,6 +519,7 @@ namespace KeepClear
                 {
                     await Task.Run((Action)engine.Dispose);
                     engine = null;
+                    recoveryCleanupFailed = false;
                 }
 
                 monitorWanted = false;
@@ -617,17 +650,20 @@ namespace KeepClear
         private void UpdateControls()
         {
             bool running = engine != null;
-            input.Enabled = output.Enabled = refresh.Enabled = !busy && !running;
-            monitorDevice.Enabled = !busy && !monitorWanted;
-            start.Enabled = !busy && (running || (input.SelectedItem != null && output.SelectedItem != null));
+            input.Enabled = output.Enabled = refresh.Enabled = !busy && !running && !recovering;
+            monitorDevice.Enabled = !busy && !monitorWanted && !recovering;
+            start.Enabled = recovering ? !exitRequested && !recoveryCancellation.IsCancellationRequested
+                : !busy && (running || (input.SelectedItem != null && output.SelectedItem != null));
             listen.Enabled = !busy && (monitorWanted || (CanEnableMonitor && monitorDevice.SelectedItem != null));
-            start.Text = busy ? T("请稍候…", "Please wait…") : running ? (String.IsNullOrEmpty(lastError) ? T("停止", "Stop") : T("复位", "Reset")) : T("启动", "Start");
+            start.Text = recovering ? T("停止", "Stop") : busy ? T("请稍候…", "Please wait…") : running ? (String.IsNullOrEmpty(lastError) ? T("停止", "Stop") : T("复位", "Reset")) : T("启动", "Start");
             listen.Text = monitorWanted ? T("监听：开", "Monitor: on") : T("监听：关", "Monitor: off");
             listen.BackColor = monitorWanted ? Color.FromArgb(225, 237, 252) : Palette.Paper;
             listen.ForeColor = monitorWanted ? Palette.Blue : Palette.Ink;
             hint.Text = noticeKey == "recovery" ? T("等待时间持续增加，正在恢复音频…", "Recovering a growing audio backlog…") : noticeKey == "devices" ? T("未检测到麦克风或 VB-CABLE，连接设备后点击刷新。", "Microphone or VB-CABLE missing. Connect devices, then refresh.") : noticeKey == "save" ? T("设置未能保存，请检查用户配置目录权限。", "Could not save settings. Check user folder permissions.") : noticeKey == "monitor" ? T("监听设备不可用，请关闭监听后重新选择设备。", "Monitor unavailable. Turn it off and select another device.") : noticeKey == "muted" ? T("启动检查时麦克风已静音，使用前请取消静音。", "Microphone was muted at startup. Unmute it before use.") : T("游戏 / 通话的麦克风请选择 CABLE Output。", "Select CABLE Output as the microphone in your game or call.");
             state.Text = statusKey == "error" ? T("● 处理已停止，请复位后重试", "● Processing stopped. Reset to try again") : statusKey == "loading" ? T("● 正在加载模型…", "● Loading models…") : statusKey == "running" ? T("● 降噪中", "● Noise reduction active") : statusKey == "stopped" ? T("● 已停止", "● Stopped") : T("● 就绪", "● Ready");
             state.ForeColor = statusKey == "error" ? Color.FromArgb(175, 62, 45) : statusKey == "running" ? Palette.Blue : Palette.Muted;
+            if (statusKey == "error" && engine == null && automaticRestart.Attempts > 0)
+                state.Text = T("● 自动恢复已停止，请重新启动", "● Recovery stopped. Start to retry");
             if (statusKey == "error" && !String.IsNullOrEmpty(lastError))
             {
                 hint.Text = lastFailureKind == AudioFailureKind.None ? lastError : AudioFailure.Title(lastFailureKind, english) + ". " + AudioFailure.Advice(lastFailureKind, english);
@@ -635,6 +671,16 @@ namespace KeepClear
             }
             else
                 errorDetails.SetToolTip(hint, "");
+            if (recovering)
+            {
+                bool cancelling = recoveryCancellation.IsCancellationRequested;
+                state.Text = cancelling ? T("● 正在停止…", "● Stopping audio…") : T("● 正在自动恢复…", "● Restarting audio…");
+                state.ForeColor = Palette.Blue;
+                hint.Text = cancelling ? T("正在释放音频设备…", "Releasing audio devices…")
+                    : T("自动重试 ", "Automatic retry ") + automaticRestart.Attempts + "/3. "
+                        + T("点击停止可取消。", "Stop to cancel.");
+                errorDetails.SetToolTip(hint, "");
+            }
             hint.Cursor = statusKey == "error" && !String.IsNullOrEmpty(lastError) ? Cursors.Hand : Cursors.Default;
         }
 
@@ -749,6 +795,14 @@ namespace KeepClear
 
         private async Task ToggleEngine()
         {
+            if (recovering)
+            {
+                processingWanted = false;
+                recoveryCancellation.Cancel();
+                UpdateControls();
+                await recoveryTask;
+                return;
+            }
             if (busy)
                 return;
             busy = true;
@@ -759,9 +813,11 @@ namespace KeepClear
             {
                 if (engine != null)
                 {
+                    processingWanted = false;
                     await Task.Run((Action)engine.Dispose);
                     engine = null;
                     monitorWanted = false;
+                    recoveryCleanupFailed = false;
                     statusKey = "stopped";
                     noticeKey = "";
                     lastError = "";
@@ -772,25 +828,22 @@ namespace KeepClear
                     var destination = output.SelectedItem as AudioDevice;
                     if (source == null || destination == null || source.IsCable || !destination.IsCable)
                         throw new InvalidOperationException(T("请选择真实麦克风和 VB-CABLE 输出。", "Choose a physical microphone and VB-CABLE output."));
-                    foreach (string file in new[]
-                    {
-                        "alkove/alkove-focus-1-preview.alk",
-                        "alkove/alkove-cue-1-preview.alk",
-                        "denoiser/dns48-state.pt"
-                    })
-                        if (!File.Exists(Path.Combine(root, "models", file)))
-                            throw new FileNotFoundException(T("本地模型不完整，请重新运行 setup-models.ps1。", "Local model files are missing. Run setup-models.ps1 again."));
                     settings.Python = AppSettings.ResolvePython(root, settings.Python);
                     SaveSettings();
                     lastError = "";
                     lastFailureKind = AudioFailureKind.None;
                     statusKey = "loading";
-                    engine = new AudioEngine(new EngineOptions { InputId = source.Id, OutputId = destination.Id, Python = settings.Python, Root = root, Alkove = true, Denoiser = true, GainDb = Math.Max(-12, Math.Min(18, settings.GainDb)) });
+                    automaticRestart.Reset();
+                    recoveryCleanupFailed = false;
+                    activeOptions = new EngineOptions { InputId = source.Id, OutputId = destination.Id, Python = settings.Python, Root = root, Alkove = true, Denoiser = true, GainDb = Math.Max(-12, Math.Min(18, settings.GainDb)) };
+                    engine = createSession(activeOptions);
                     engine.Start();
+                    processingWanted = true;
                 }
             }
             catch (Exception ex)
             {
+                processingWanted = false;
                 statusKey = "error";
                 lastError = ex.Message;
                 failure = ex;
@@ -839,8 +892,16 @@ namespace KeepClear
                 outputMeter.Advance(snapshot == null ? 0 : snapshot.OutputPeak, elapsed);
             }
 
-            if (snapshot == null)
+            if (snapshot == null || recoveryCleanupFailed)
                 return;
+            if (processingWanted && !exitRequested && !String.IsNullOrEmpty(snapshot.Error)
+                && AutomaticRestart.CanRetry(snapshot.FailureKind))
+            {
+                recoveryTask = RecoverEngine(snapshot);
+                return;
+            }
+            if (snapshot.State == "运行中" && String.IsNullOrEmpty(snapshot.Error))
+                automaticRestart.ObserveHealthy(now);
             string nextStatus = !String.IsNullOrEmpty(snapshot.Error) ? "error" : snapshot.State == "运行中" ? "running" : "loading";
             string nextNotice = !String.IsNullOrEmpty(snapshot.MonitorError) ? "monitor" : snapshot.Recovering ? "recovery" : noticeKey == "recovery" ? "" : noticeKey;
             bool resetMonitor = monitorWanted && nextStatus != "running";
@@ -856,11 +917,141 @@ namespace KeepClear
                 UpdateControls();
             if (newFailure)
             {
-                if (Visible)
-                    MessageBox.Show(this, AudioFailure.Title(snapshot.FailureKind, english) + "\n\n" + AudioFailure.Advice(snapshot.FailureKind, english) + "\n\n" + T("诊断日志：", "Diagnostic logs: ") + Diagnostics.Folder, "KeepClear", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                else
-                    tray.ShowBalloonTip(6000, "KeepClear", T("处理已停止，请打开窗口查看错误。", "Processing stopped. Open the window to view the error."), ToolTipIcon.Error);
+                processingWanted = false;
+                NotifyStreamFailure();
             }
+        }
+
+        private IAudioSession CreateSession(EngineOptions options)
+        {
+            foreach (string file in new[] { "alkove/alkove-focus-1-preview.alk", "alkove/alkove-cue-1-preview.alk", "denoiser/dns48-state.pt" })
+                if (!File.Exists(Path.Combine(options.Root, "models", file)))
+                    throw new AudioFailureException(AudioFailureKind.ModelLoad, T("本地模型不完整，请重新运行 setup-models.ps1。", "Local model files are missing. Run setup-models.ps1 again."));
+            return new AudioEngine(options);
+        }
+
+        private async Task DisposeEngine()
+        {
+            var previous = engine;
+            if (previous == null) return;
+            await Task.Run((Action)previous.Dispose);
+            engine = null;
+        }
+
+        private async Task RecoverEngine(EngineSnapshot failure)
+        {
+            recovering = busy = true;
+            var source = new CancellationTokenSource();
+            recoveryCancellation = source;
+            var token = source.Token;
+            bool restoreMonitor = monitorWanted;
+            string monitorId = SelectedId(monitorDevice, settings.MonitorId);
+            bool success = false, cleanupFailed = false;
+            lastError = failure.Error;
+            lastFailureKind = failure.FailureKind;
+            UpdateControls();
+            try
+            {
+                int delay;
+                while (processingWanted && !exitRequested && automaticRestart.TryReserve(failure.FailureKind, out delay))
+                {
+                    Diagnostics.Write("auto-restart", "attempt=" + automaticRestart.Attempts + " delay_ms=" + delay
+                        + " kind=" + failure.FailureKind + " input=" + activeOptions.InputId + " output=" + activeOptions.OutputId);
+                    UpdateControls();
+                    try { await DisposeEngine(); }
+                    catch (Exception) { cleanupFailed = true; throw; }
+                    token.ThrowIfCancellationRequested();
+                    await recoveryWait(delay, token);
+                    token.ThrowIfCancellationRequested();
+                    engine = createSession(activeOptions);
+                    engine.Start();
+                    double deadline = clock.Elapsed.TotalSeconds + 45;
+                    while (true)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        failure = engine.Snapshot();
+                        if (!String.IsNullOrEmpty(failure.Error)) break;
+                        if (failure.State == "运行中" && failure.CaptureFrames > 0 && failure.ProcessedRenderFrames > 0)
+                        {
+                            success = true;
+                            break;
+                        }
+                        if (clock.Elapsed.TotalSeconds >= deadline)
+                            throw new AudioFailureException(AudioFailureKind.Timeout, "Automatic restart did not establish audio flow within 45 seconds.");
+                        await recoveryWait(100, token);
+                    }
+                    if (success) break;
+                    lastError = failure.Error;
+                    lastFailureKind = failure.FailureKind;
+                }
+                if (success && restoreMonitor && !String.IsNullOrEmpty(monitorId))
+                {
+                    try { await Task.Run(() => engine.SetMonitor(monitorId)); }
+                    catch (Exception ex)
+                    {
+                        Diagnostics.Failure("auto-restart-monitor", ex);
+                        monitorWanted = false;
+                        noticeKey = "monitor";
+                    }
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                success = false;
+                lastError = ex.Message;
+                lastFailureKind = AudioFailure.Classify("auto-restart", ex);
+                Diagnostics.Failure("auto-restart", ex);
+            }
+
+            success = success && processingWanted && !exitRequested && !token.IsCancellationRequested;
+            if (!success && !cleanupFailed)
+            {
+                try { await DisposeEngine(); }
+                catch (Exception ex)
+                {
+                    cleanupFailed = true;
+                    lastError = ex.Message;
+                    lastFailureKind = AudioFailureKind.None;
+                    Diagnostics.Failure("auto-restart-cleanup", ex);
+                }
+            }
+            bool cancelled = token.IsCancellationRequested || !processingWanted || exitRequested;
+            if (success)
+            {
+                automaticRestart.ObserveHealthy(clock.Elapsed.TotalSeconds);
+                lastError = "";
+                lastFailureKind = AudioFailureKind.None;
+                statusKey = "running";
+                if (noticeKey != "monitor") noticeKey = "";
+                Diagnostics.Write("auto-restart", "completed attempt=" + automaticRestart.Attempts);
+            }
+            else
+            {
+                monitorWanted = false;
+                processingWanted = false;
+                statusKey = cancelled && !cleanupFailed ? "stopped" : "error";
+                if (statusKey == "stopped") { lastError = ""; lastFailureKind = AudioFailureKind.None; noticeKey = ""; }
+                Diagnostics.Write("auto-restart", cancelled ? "cancelled" : "stopped; retry budget exhausted or nonrecoverable fault");
+            }
+            recovering = busy = false;
+            recoveryCleanupFailed = cleanupFailed;
+            recoveryCancellation = null;
+            source.Dispose();
+            if (!IsDisposed)
+            {
+                UpdateControls();
+                if (!success && (!cancelled || cleanupFailed)) NotifyStreamFailure();
+            }
+        }
+
+        private void NotifyStreamFailure()
+        {
+            if (streamFailureNotification != null) { streamFailureNotification(); return; }
+            if (Visible)
+                MessageBox.Show(this, AudioFailure.Title(lastFailureKind, english) + "\n\n" + AudioFailure.Advice(lastFailureKind, english) + "\n\n" + T("诊断日志：", "Diagnostic logs: ") + Diagnostics.Folder, "KeepClear", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            else
+                tray.ShowBalloonTip(6000, "KeepClear", T("处理已停止，请打开窗口查看错误。", "Processing stopped. Open the window to view the error."), ToolTipIcon.Error);
         }
 
         private void ShowFailure(Exception ex)

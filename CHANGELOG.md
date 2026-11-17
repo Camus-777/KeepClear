@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.3 — 2026-11-17
+
+- Add cancellable automatic audio restart after runtime backlog, input/output callback timeouts and identified model-response watchdog timeouts.
+- Require complete cleanup before reopening the exact selected devices; restore monitoring when possible.
+- Limit consecutive retries to three with 2/5/15-second backoff; replenish the budget after two healthy minutes and cancel recovery on Stop or Exit.
+
 ## v0.3.2 — 2026-11-17
 
 - Set the startup audio connectivity test timeout to 45 seconds.

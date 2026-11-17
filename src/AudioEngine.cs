@@ -27,7 +27,7 @@ namespace KeepClear
         internal AudioFailureKind FailureKind;
     }
 
-    public sealed class AudioEngine : IDisposable
+    public sealed class AudioEngine : IDisposable, IAudioSession
     {
         private readonly object gate = new object();
         private readonly object monitorGate = new object();

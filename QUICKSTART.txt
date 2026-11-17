@@ -1,4 +1,4 @@
-KeepClear v0.3.2 - Windows x64
+KeepClear v0.3.3 - Windows x64
 Chinese name: 保持清晰
 
 1. Extract the entire archive and run KeepClear.exe. Do not copy only the EXE or run it inside the ZIP. Requires Windows 10/11 x64 and .NET Framework 4.8.

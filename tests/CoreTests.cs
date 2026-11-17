@@ -399,9 +399,10 @@ namespace KeepClear
                     {
                         worker.Process(new float[] { 0 });
                     }
-                    catch (InvalidOperationException)
+                    catch (InvalidOperationException ex)
                     {
                         timeout = true;
+                        Check(AudioFailure.Classify("model-process", ex) == AudioFailureKind.ModelTimeout, "actual stalled model is classified as recoverable watchdog timeout");
                     }
 
                     Check(timeout && watch.ElapsedMilliseconds >= 1500 && watch.ElapsedMilliseconds < 4000, "stalled model call has bounded timeout");
@@ -417,6 +418,7 @@ namespace KeepClear
                 }
 
                 StabilityTests.Run(Check);
+                AutomaticRestartTests.Run(Check);
                 Console.WriteLine("TOTAL: " + passed + " passed");
                 return 0;
             }

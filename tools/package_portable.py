@@ -144,16 +144,16 @@ def main():
         shutil.copy2(ROOT / name, output / name)
     shutil.copy2(ROOT / "docs" / "PORTABLE-QUICKSTART.txt", output / "开始使用.txt")
     manifest = {
-        "format": 1, "application": "KeepClear", "version": "0.3.2", "architecture": "Windows x64",
+        "format": 1, "application": "KeepClear", "version": "0.3.3", "architecture": "Windows x64",
         "python": {"version": PYTHON_VERSION, "source": EMBED_URL, "sha256": EMBED_SHA},
         "packages": packages, "omitted_build_bytes": omitted_bytes,
         "cpp_runtime_alias_source": cpp_source,
         "prerequisites": ["Windows 10/11 x64", ".NET Framework 4.8", "Windows administrator approval if VB-CABLE is missing"],
         "bundled_vbcable": {"resource": "KeepClear.VBCable.zip", "package": "VBCABLE_Driver_Pack46.zip", "sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90", "origin": "https://vb-audio.com/Cable/"},
         "publication": {
-            "date": "2026-11-17", "release_tag": "v0.3.2", "original_project_license": "CC-BY-NC-4.0",
+            "date": "2026-11-17", "release_tag": "v0.3.3", "original_project_license": "CC-BY-NC-4.0",
             "copyright_notice": "NOTICE",
-            "changes": "Counted reusable audio buffers; bounded batched background logging with fault priority; IPC phase timings, worker CPU/memory/thread and DNS48 state-size diagnostics. Retains ATen execution, DPI/tray repairs, connectivity checks, queue-trend recovery, original weights and bundled runtime/driver.",
+            "changes": "Cancellable automatic audio restart with bounded backoff, complete cleanup and exact device retention; counted reusable audio buffers; bounded batched background logging with fault priority; IPC phase timings, worker CPU/memory/thread and DNS48 state-size diagnostics. Retains ATen execution, DPI/tray repairs, connectivity checks, queue-trend recovery, original weights and bundled runtime/driver.",
         },
         "startup_audio_check": {
             "gui_each_primary_startup": True, "requires_microphone_confirmation": True,
@@ -173,6 +173,14 @@ def main():
             "exit_flush_ms": 2000, "worker_resource_interval_seconds": 5,
             "ipc_phase_timings": True, "worker_cpu_and_state_metrics": True,
             "records_audio": False,
+        },
+        "automatic_restart": {
+            "enabled": True, "runtime_only": True,
+            "recoverable_kinds": ["Slow", "InputTimeout", "OutputTimeout", "ModelTimeout"],
+            "max_attempts": 3, "backoff_ms": [2000, 5000, 15000],
+            "healthy_reset_seconds": 120, "reopen_timeout_seconds": 45,
+            "cleanup_before_reopen": True, "retain_device_ids": True,
+            "restore_monitor": True, "cancel_on_stop_or_exit": True,
         },
         "runtime_recovery": {
             "mode": "total-queue-trend", "sample_ms": 100, "window_seconds": 1,

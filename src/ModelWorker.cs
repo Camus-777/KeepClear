@@ -236,7 +236,9 @@ namespace KeepClear
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("模型处理失败；已停止输出。" + ErrorDetail(), ex);
+                Exception cause = Volatile.Read(ref timedOut) != 0
+                    ? new AudioFailureException(AudioFailureKind.ModelTimeout, "Model response watchdog expired.", ex) : ex;
+                throw new InvalidOperationException("模型处理失败；已停止输出。" + ErrorDetail(), cause);
             }
         }
 
