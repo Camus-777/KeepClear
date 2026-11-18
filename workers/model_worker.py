@@ -20,7 +20,8 @@ DNS_SHA = "11decc9d8e3f0998a64caed6b57b68a40cb200a627996a636625f20bdb91f1d6"
 
 
 class SerialChain:
-    def __init__(self, stages, metrics=False):
+    def __init__(self, stages, metrics=False, array_module=None):
+        self.np = array_module
         self.stages = stages
         self.metrics = metrics
         self.report_at = time.perf_counter()
@@ -29,7 +30,7 @@ class SerialChain:
 
     def process(self, pcm):
         for stage in self.stages:
-            if not pcm:
+            if len(pcm) == 0:
                 break
             started = time.perf_counter() if self.metrics else 0
             pcm = stage.process(pcm)
@@ -39,7 +40,7 @@ class SerialChain:
                 values[0] += 1
                 values[1] += elapsed
                 values[2] = max(values[2], elapsed)
-            if len(pcm) > MAX_SAMPLES or any(not math.isfinite(x) for x in pcm):
+            if not valid_pcm(pcm, self.np):
                 raise ValueError("model returned invalid PCM")
         if self.metrics and time.perf_counter() - self.report_at >= 1:
             now = time.perf_counter()
@@ -76,12 +77,14 @@ class AlkoveStage:
         self.processor = alkove.Processor(models, focus=True, cue=False, normalize=False, rate=RATE)
 
     def process(self, pcm):
-        return self.processor.push(self.np.asarray(pcm, dtype=self.np.float32)).audio.tolist()
+        return self.processor.push(self.np.asarray(pcm, dtype=self.np.float32)).audio
 
 
 class DenoiserStage:
     def __init__(self, checkpoint):
         import torch
+        import numpy as np
+        self.np = np
         # Only the original upstream inference modules are bundled, not its
         # training/evaluation stack or a second audio-device implementation.
         vendor = Path(__file__).resolve().parents[1] / "third_party" / "denoiser"
@@ -119,8 +122,8 @@ class DenoiserStage:
 
     def process(self, pcm):
         with self.torch.inference_mode():
-            frame = self.torch.tensor(pcm, dtype=self.torch.float32).reshape(1, -1)
-            return self.streamer.feed(frame)[0].tolist()
+            frame = self.torch.from_numpy(self.np.asarray(pcm, dtype=self.np.float32)).reshape(1, -1)
+            return self.streamer.feed(frame)[0].numpy()
 
     def diagnostic_state(self):
         streamer = self.streamer
@@ -141,7 +144,15 @@ def read_exact(stream, size):
     return parts
 
 
-def serve(chain, source, destination):
+def valid_pcm(pcm, array_module=None):
+    if len(pcm) > MAX_SAMPLES:
+        return False
+    if array_module is None:
+        return all(math.isfinite(x) for x in pcm)
+    return pcm.ndim == 1 and bool(array_module.isfinite(pcm).all())
+
+
+def serve(chain, source, destination, array_module=None):
     destination.write(b"CV01" + struct.pack("<i", RATE))
     destination.flush()
     while True:
@@ -153,15 +164,19 @@ def serve(chain, source, destination):
         count, = struct.unpack("<i", header)
         if count < 0 or count > MAX_SAMPLES:
             raise ValueError("audio packet too large or negative")
-        pcm = list(struct.unpack("<%df" % count, read_exact(source, count * 4)))
-        if any(not math.isfinite(x) for x in pcm):
+        raw = read_exact(source, count * 4)
+        # Own writable storage: downstream native code never sees a read-only tensor.
+        pcm = (array_module.frombuffer(raw, dtype="<f4") if array_module is not None
+               else list(struct.unpack("<%df" % count, raw)))
+        if not valid_pcm(pcm, array_module):
             raise ValueError("non-finite input PCM")
         with contextlib.redirect_stdout(sys.stderr):
             result = chain.process(pcm)
-        if len(result) > MAX_SAMPLES or any(not math.isfinite(x) for x in result):
+        if not valid_pcm(result, array_module):
             raise ValueError("invalid output PCM")
         destination.write(struct.pack("<i", len(result)))
-        destination.write(struct.pack("<%df" % len(result), *result))
+        destination.write(array_module.asarray(result, dtype="<f4").tobytes() if array_module is not None
+                          else struct.pack("<%df" % len(result), *result))
         destination.flush()
 
 
@@ -180,7 +195,8 @@ def main():
             stages.append(AlkoveStage(os.path.join(args.models, "alkove")))
         if args.denoiser:
             stages.append(DenoiserStage(os.path.join(args.models, "denoiser", "dns48-state.pt")))
-    serve(SerialChain(stages, metrics=True), sys.stdin.buffer, output)
+    import numpy as np
+    serve(SerialChain(stages, metrics=True, array_module=np), sys.stdin.buffer, output, array_module=np)
 
 
 if __name__ == "__main__":

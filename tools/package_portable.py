@@ -144,16 +144,16 @@ def main():
         shutil.copy2(ROOT / name, output / name)
     shutil.copy2(ROOT / "docs" / "PORTABLE-QUICKSTART.txt", output / "开始使用.txt")
     manifest = {
-        "format": 1, "application": "KeepClear", "version": "0.3.3", "architecture": "Windows x64",
+        "format": 1, "application": "KeepClear", "version": "0.3.4", "architecture": "Windows x64",
         "python": {"version": PYTHON_VERSION, "source": EMBED_URL, "sha256": EMBED_SHA},
         "packages": packages, "omitted_build_bytes": omitted_bytes,
         "cpp_runtime_alias_source": cpp_source,
         "prerequisites": ["Windows 10/11 x64", ".NET Framework 4.8", "Windows administrator approval if VB-CABLE is missing"],
         "bundled_vbcable": {"resource": "KeepClear.VBCable.zip", "package": "VBCABLE_Driver_Pack46.zip", "sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90", "origin": "https://vb-audio.com/Cable/"},
         "publication": {
-            "date": "2026-11-17", "release_tag": "v0.3.3", "original_project_license": "CC-BY-NC-4.0",
+            "date": "2026-11-18", "release_tag": "v0.3.4", "original_project_license": "CC-BY-NC-4.0",
             "copyright_notice": "NOTICE",
-            "changes": "Cancellable automatic audio restart with bounded backoff, complete cleanup and exact device retention; counted reusable audio buffers; bounded batched background logging with fault priority; IPC phase timings, worker CPU/memory/thread and DNS48 state-size diagnostics. Retains ATen execution, DPI/tray repairs, connectivity checks, queue-trend recovery, original weights and bundled runtime/driver.",
+            "changes": "Float32 array PCM transport and NumPy/Tensor views; three settled low-queue windows for recovery completion; retry credit requires progressing low stable queues for 120 observed seconds. Preserves model weights, serial pipeline, thread policy, startup checks, devices and input continuity.",
         },
         "startup_audio_check": {
             "gui_each_primary_startup": True, "requires_microphone_confirmation": True,
@@ -167,6 +167,7 @@ def main():
         "cpu_inference": {
             "backend": "aten", "max_compute_threads": 2, "parallel_min_logical_processors": 4,
             "interop_threads": 1, "flush_denormal": True, "dtype": "float32",
+            "array_pcm_transport": True, "numpy_tensor_views": True,
         },
         "diagnostics": {
             "async_log_capacity": 512, "log_batch_size": 32, "max_record_chars": 16384,
@@ -179,6 +180,8 @@ def main():
             "recoverable_kinds": ["Slow", "InputTimeout", "OutputTimeout", "ModelTimeout"],
             "max_attempts": 3, "backoff_ms": [2000, 5000, 15000],
             "healthy_reset_seconds": 120, "reopen_timeout_seconds": 45,
+            "healthy_queue_below_ms": 200, "requires_stream_progress": True,
+            "healthy_observation_gap_seconds": 1.5, "reject_growing_queue": True,
             "cleanup_before_reopen": True, "retain_device_ids": True,
             "restore_monitor": True, "cancel_on_stop_or_exit": True,
         },
@@ -186,6 +189,8 @@ def main():
             "mode": "total-queue-trend", "sample_ms": 100, "window_seconds": 1,
             "growth_windows": 2, "minimum_window_growth_ms": 2, "cumulative_growth_ms": 20,
             "growth_queue_ms": 200, "emergency_queue_ms": 500,
+            "completion_mean_ms": 160, "completion_peak_below_ms": 200,
+            "completion_settled_windows": 3,
             "input_capacity_ms": 512, "output_capacity_ms": 512, "normal_playback_reserve_ms": 48,
             "quiet_span_ms": 20, "quiet_amplitude": 0.00001, "recovery_output_target_ms": 120,
             "recovery_timeout_seconds": None, "cooldown_stop": False,

@@ -10,4 +10,4 @@ KeepClear 首次公开发布的版本为 v0.3.0，中文名称为“保持清晰
 
 自研代码、文档与图标统一署名为 KeepClear contributors；第三方作者及原始许可保持不变。VB-CABLE 的厂商名称、硬件 ID、服务、原始安装包及其数字签名不变。当前验证范围见 [VALIDATION.md](VALIDATION.md)。
 
-本文件记录 v0.3.0 阶段。v0.3.3 修复及当前核验见 [REPAIR-0.3.3.md](REPAIR-0.3.3.md) 和 [VALIDATION.md](VALIDATION.md)。
+本文件记录 v0.3.0 阶段。v0.3.4 修复及当前核验见 [REPAIR-0.3.4.md](REPAIR-0.3.4.md) 和 [VALIDATION.md](VALIDATION.md)。

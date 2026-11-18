@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace KeepClear
 {
@@ -12,7 +12,8 @@ namespace KeepClear
         internal const double EmergencyMs = 500;
         private double windowStart, lastObserved = Double.NegativeInfinity;
         private double sum, previousMean, growthMs;
-        private int samples, growingWindows;
+        private int samples, growingWindows, settledWindows;
+        private double windowMaximum;
         internal int Count { get; private set; }
         internal bool Active { get { lock (gate) return active; } }
 
@@ -28,19 +29,23 @@ namespace KeepClear
                     previousMean = total;
                     sum = 0;
                     growthMs = 0;
-                    samples = growingWindows = 0;
+                    samples = growingWindows = settledWindows = 0;
+                    windowMaximum = total;
                 }
                 lastObserved = now;
                 sum += total;
+                windowMaximum = Math.Max(windowMaximum, total);
                 samples++;
                 if (total >= EmergencyMs && !active)
                 {
                     active = true;
+                    settledWindows = 0;
                     Count++;
                     return RecoveryStep.Started;
                 }
                 if (now - windowStart < 1) return RecoveryStep.None;
                 double mean = sum / samples;
+                bool settled = mean <= 160 && windowMaximum < 200;
                 double increase = mean - previousMean;
                 bool growing = increase >= 2;
                 growingWindows = growing ? growingWindows + 1 : 0;
@@ -49,9 +54,11 @@ namespace KeepClear
                 sum = 0;
                 samples = 0;
                 windowStart = now;
+                windowMaximum = 0;
                 if (active)
                 {
-                    if (!growing && total < EmergencyMs)
+                    settledWindows = settled && !growing ? settledWindows + 1 : 0;
+                    if (settledWindows >= 3)
                     {
                         active = false;
                         return RecoveryStep.Completed;
@@ -60,6 +67,7 @@ namespace KeepClear
                 else if (growingWindows >= 2 && growthMs >= 20 && total >= 200)
                 {
                     active = true;
+                    settledWindows = 0;
                     Count++;
                     return RecoveryStep.Started;
                 }

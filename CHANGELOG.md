@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.4 — 2026-11-18
+
+- Keep production PCM in float32 NumPy arrays through binary IPC and model stages, reducing float-list conversion and tensor-copy overhead without changing model weights or pipeline order.
+- Require three settled low-queue windows before backlog recovery completes; stable 70–80 ms queues and brief 120 ms peaks continue.
+- Replenish automatic-retry credit only after 120 continuously observed healthy seconds with capture, model processing and processed playback advancing and no high/growing queue or active recovery.
+- Retain the existing one/two-thread CPU policy after local comparison. Startup connectivity checks, device selection and input continuity are unchanged.
+
 ## v0.3.3 — 2026-11-17
 
 - Add cancellable automatic audio restart after runtime backlog, input/output callback timeouts and identified model-response watchdog timeouts.

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -900,8 +900,8 @@ namespace KeepClear
                 recoveryTask = RecoverEngine(snapshot);
                 return;
             }
-            if (snapshot.State == "运行中" && String.IsNullOrEmpty(snapshot.Error))
-                automaticRestart.ObserveHealthy(now);
+            if (automaticRestart.ObserveHealthy(now, snapshot))
+                Diagnostics.Write("auto-restart", "retry budget replenished after 120 seconds of progressing, stable low-queue operation");
             string nextStatus = !String.IsNullOrEmpty(snapshot.Error) ? "error" : snapshot.State == "运行中" ? "running" : "loading";
             string nextNotice = !String.IsNullOrEmpty(snapshot.MonitorError) ? "monitor" : snapshot.Recovering ? "recovery" : noticeKey == "recovery" ? "" : noticeKey;
             bool resetMonitor = monitorWanted && nextStatus != "running";
@@ -1019,7 +1019,7 @@ namespace KeepClear
             bool cancelled = token.IsCancellationRequested || !processingWanted || exitRequested;
             if (success)
             {
-                automaticRestart.ObserveHealthy(clock.Elapsed.TotalSeconds);
+                automaticRestart.ObserveHealthy(clock.Elapsed.TotalSeconds, engine.Snapshot());
                 lastError = "";
                 lastFailureKind = AudioFailureKind.None;
                 statusKey = "running";

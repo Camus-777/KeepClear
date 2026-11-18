@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace KeepClear
 {
@@ -28,9 +28,9 @@ namespace KeepClear
             check(policy.Active && policy.Count == 1, "sustained growth is recognized before 500 ms capacity pressure");
             check(policy.Observe(1, 0, 0) == RecoveryStep.None && policy.Active, "older observations cannot finish recovery");
             for (int tick = 21; tick <= 50; tick++) policy.Observe(tick / 10.0, 250, 0);
-            check(!policy.Active, "a flattened queue completes recovery without a one-second stop deadline");
+            check(policy.Active, "a flattened 250 ms queue does not declare recovery complete");
             for (int tick = 51; tick <= 80; tick++) policy.Observe(tick / 10.0, 250 + (tick - 50) * 7, 0);
-            check(policy.Active && policy.Count == 2, "growth can recover again without a 30-second failure rule");
+            check(policy.Active && policy.Count == 1, "growth at high latency remains one continuous recovery episode");
             policy = new RealtimeRecovery();
             check(policy.Observe(0, 300, 200) == RecoveryStep.Started, "combined input and output at 500 ms request immediate capacity intervention");
             check(!Timeline(t => t < 4 ? 70 + 100 * t : 70, 8).Active, "falling total latency leaves recovery");
@@ -40,6 +40,15 @@ namespace KeepClear
             policy = new RealtimeRecovery();
             policy.Observe(0, 70, 0); policy.Observe(5, 300, 0); policy.Observe(5.1, 300, 0);
             check(!policy.Active, "a monitoring gap does not invent unobserved growing windows");
+
+            check(Timeline(t => t < 3 ? 70 + 110 * t : 350, 20).Active, "a 350 ms plateau never declares recovery complete");
+            check(Timeline(t => t < 3 ? 70 + 110 * t : 180, 20).Active, "completion hysteresis retains recovery at a 180 ms plateau");
+            check(Timeline(t => t < 3 ? 70 + 110 * t : t < 4 ? 70 : 300, 10).Active, "one low window cannot prematurely complete recovery");
+            check(!Timeline(t => t < 3 ? 70 + 110 * t : 120, 12).Active, "three settled low windows complete recovery");
+            policy = new RealtimeRecovery();
+            policy.Observe(0, 500, 0);
+            policy.Observe(20, 70, 0); policy.Observe(21, 70, 0);
+            check(policy.Active, "an observation gap cannot count as settled recovery time");
 
             var buffer = new SampleBuffer(16);
             buffer.Write(new float[] { 1, 2, 0, 0, 0, 0, 3, 4 });

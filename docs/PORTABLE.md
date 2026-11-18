@@ -1,8 +1,8 @@
-# KeepClear 0.3.3 独立运行包
+# KeepClear 0.3.4 独立运行包
 
 ## 使用与边界
 
-交付目录为 `release/KeepClear-0.3.3-win-x64`。解压完整 ZIP，双击 KeepClear.exe，不需要另装 Python、pip、PyTorch、NumPy、Alkove 或 CUDA。正常推理只使用随包文件。
+交付目录为 `release/KeepClear-0.3.4-win-x64`。解压完整 ZIP，双击 KeepClear.exe，不需要另装 Python、pip、PyTorch、NumPy、Alkove 或 CUDA。正常推理只使用随包文件。
 
 仍需要 Windows 10/11 x64、.NET Framework 4.8。VB-CABLE 基础版官方原始安装包已嵌入 EXE，缺少驱动时自动请求管理员授权安装；健康的已有驱动不重装；缺失/不完整时尝试一次安装，最多等待约 20 秒，未就绪则保存等待状态避免重复安装；之后按真实状态继续或提示重启，不改变系统默认音频设备。详见 [STARTUP-INSTALL.md](STARTUP-INSTALL.md)。整个文件夹可以移动；程序始终优先使用自身目录的 `runtime/python.exe`，旧设置中即使有可用的开发机 Python 绝对路径也不会优先使用它。标记为独立包但缺失运行时的情况会报错，不会悄悄改用系统 Python。
 
@@ -14,7 +14,7 @@
 
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File ./build-portable.ps1
-.venv/Scripts/python.exe tools/validate_portable.py release/KeepClear-0.3.3-win-x64
+.venv/Scripts/python.exe tools/validate_portable.py release/KeepClear-0.3.4-win-x64
 ```
 
 build-portable.ps1 会依次编译、组装、隔离验证、压缩，再逐文件核验 ZIP 内容，并输出同名 .zip.sha256。第二行可用于单独重跑验证。首次需要下载官方 CPython 嵌入式包；缓存已存在时可离线组装。目标目录必须在项目 release 内且原先不存在，脚本不会覆盖既有交付目录。

@@ -7,6 +7,10 @@ import unittest
 import contextlib
 from unittest.mock import patch
 import json
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 spec = importlib.util.spec_from_file_location("worker", Path(__file__).resolve().parents[1] / "workers" / "model_worker.py")
 worker = importlib.util.module_from_spec(spec)
@@ -87,6 +91,65 @@ class WorkerTests(unittest.TestCase):
         class Huge:
             def process(self, pcm): return [0.0] * 32001
         with self.assertRaises(ValueError): worker.SerialChain([Huge()]).process([1])
+
+
+@unittest.skipIf(np is None, "NumPy integration checks require model dependencies")
+class ArrayWorkerTests(unittest.TestCase):
+    def run_packet(self, chain, values):
+        packet = struct.pack("<i", len(values)) + np.asarray(values, dtype="<f4").tobytes()
+        output = io.BytesIO()
+        worker.serve(chain, io.BytesIO(packet), output, array_module=np)
+        return packet, output.getvalue()
+
+    def test_array_wire_exact(self):
+        for values in [[], [0, -0.0, 0.25, -0.5], [1e-30, -1e-30]]:
+            packet, actual = self.run_packet(worker.SerialChain([], array_module=np), values)
+            self.assertEqual(actual, b"CV01" + struct.pack("<i", 16000) + packet)
+
+    def test_array_nonfinite(self):
+        for value in [math.nan, math.inf, -math.inf]:
+            with self.assertRaises(ValueError):
+                self.run_packet(worker.SerialChain([], array_module=np), [value])
+
+    def test_array_serial_order_and_empty(self):
+        class Add:
+            def process(self, pcm): return pcm + np.float32(1)
+        class Multiply:
+            def process(self, pcm): return pcm * np.float32(3)
+        chain = worker.SerialChain([Add(), Multiply()], array_module=np)
+        self.assertEqual(chain.process(np.array([1], dtype=np.float32)).tolist(), [6])
+        self.assertEqual(len(chain.process(np.array([], dtype=np.float32))), 0)
+
+    def test_array_stage_rejects_nonfinite_and_shape(self):
+        class Bad:
+            def __init__(self, value): self.value = value
+            def process(self, pcm): return self.value
+        for result in [np.array([math.nan]), np.zeros((2, 2)), np.zeros(32001)]:
+            with self.assertRaises(ValueError):
+                worker.SerialChain([Bad(result)], array_module=np).process(np.zeros(256))
+
+    def test_array_variable_output(self):
+        class Buffering:
+            def __init__(self): self.pending = np.array([], dtype=np.float32)
+            def process(self, pcm):
+                self.pending = np.concatenate([self.pending, pcm])
+                if len(self.pending) < 4: return np.array([], dtype=np.float32)
+                result = self.pending.copy()
+                self.pending = np.array([], dtype=np.float32)
+                return result
+        chain = worker.SerialChain([Buffering()], array_module=np)
+        self.assertEqual(chain.process(np.array([1, 2], dtype=np.float32)).tolist(), [])
+        self.assertEqual(chain.process(np.array([3, 4], dtype=np.float32)).tolist(), [1, 2, 3, 4])
+
+    def test_array_writable_and_truncated(self):
+        class Mutate:
+            def process(self, pcm):
+                pcm[0] = -0.25
+                return pcm
+        _, actual = self.run_packet(worker.SerialChain([Mutate()], array_module=np), [0.25])
+        self.assertEqual(struct.unpack("<f", actual[-4:])[0], -0.25)
+        with self.assertRaises(EOFError):
+            worker.serve(worker.SerialChain([], array_module=np), io.BytesIO(struct.pack("<i", 2) + b"x"), io.BytesIO(), array_module=np)
 
 
 if __name__ == "__main__":

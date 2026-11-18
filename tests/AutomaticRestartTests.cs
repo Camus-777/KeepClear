@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -115,6 +115,16 @@ namespace KeepClear
             }
         }
 
+        private static void FeedHealth(AutomaticRestart policy, int from, int to, double queue = 70, bool recovering = false, bool progress = true)
+        {
+            for (int second = from; second <= to; second++)
+                policy.ObserveHealthy(second, new EngineSnapshot {
+                    State = "运行中", InputQueueMs = queue, Recovering = recovering,
+                    CaptureFrames = progress ? (second + 1) * 160 : 160,
+                    Blocks = progress ? second + 1 : 1,
+                    ProcessedRenderFrames = progress ? (second + 1) * 480 : 480 });
+        }
+
         internal static void Run(Action<bool, string> check)
         {
             var policy = new AutomaticRestart();
@@ -123,11 +133,52 @@ namespace KeepClear
             check(policy.TryReserve(AudioFailureKind.InputTimeout, out delay) && delay == 5000, "second automatic retry waits 5 seconds");
             check(policy.TryReserve(AudioFailureKind.OutputTimeout, out delay) && delay == 15000, "third automatic retry waits 15 seconds");
             check(!policy.TryReserve(AudioFailureKind.Slow, out delay), "fourth automatic retry is refused");
-            policy.ObserveHealthy(0);
-            policy.ObserveHealthy(119);
+            FeedHealth(policy, 0, 120);
             check(policy.Attempts == 3, "briefly successful restart does not replenish retry budget");
-            policy.ObserveHealthy(120);
+            FeedHealth(policy, 121, 122);
             check(policy.Attempts == 0, "two uninterrupted healthy minutes replenish retry budget");
+            policy.Reset(); policy.TryReserve(AudioFailureKind.Slow, out delay);
+            FeedHealth(policy, 0, 60);
+            FeedHealth(policy, 61, 200, 300);
+            check(policy.Attempts == 1, "a high queue cannot replenish retry credit even without a formal fault");
+            FeedHealth(policy, 201, 260);
+            check(policy.Attempts == 1, "healthy time before an unhealthy queue is not accumulated");
+            FeedHealth(policy, 261, 390);
+            check(policy.Attempts == 0, "a fresh continuous healthy interval replenishes credit");
+            policy.Reset(); policy.TryReserve(AudioFailureKind.Slow, out delay);
+            FeedHealth(policy, 0, 150, 70, true);
+            check(policy.Attempts == 1, "active recovery cannot replenish retry credit");
+            policy.Reset(); policy.TryReserve(AudioFailureKind.Slow, out delay);
+            FeedHealth(policy, 0, 150, 70, false, false);
+            check(policy.Attempts == 1, "stalled capture processing or render cannot replenish retry credit");
+            policy.Reset(); policy.TryReserve(AudioFailureKind.Slow, out delay);
+            FeedHealth(policy, 0, 65); FeedHealth(policy, 100, 165);
+            check(policy.Attempts == 1, "unobserved intervals break healthy continuity");
+            policy.Reset(); policy.TryReserve(AudioFailureKind.Slow, out delay);
+            for (int second = 0; second <= 150; second++)
+                FeedHealth(policy, second, second, 70 + (second % 5) * 30);
+            check(policy.Attempts == 1, "repeated sustained queue growth cannot replenish retry credit");
+
+            bool stalledStages = true;
+            for (int stalled = 0; stalled < 3; stalled++)
+            {
+                policy.Reset(); policy.TryReserve(AudioFailureKind.Slow, out delay);
+                for (int second = 0; second <= 150; second++)
+                    policy.ObserveHealthy(second, new EngineSnapshot {
+                        State = "运行中", InputQueueMs = 75,
+                        CaptureFrames = stalled == 0 ? 1 : second + 1,
+                        Blocks = stalled == 1 ? 1 : second + 1,
+                        ProcessedRenderFrames = stalled == 2 ? 1 : second + 1 });
+                stalledStages &= policy.Attempts == 1;
+            }
+            check(stalledStages, "each capture processing and processed-render stage must independently advance");
+            policy.Reset(); policy.TryReserve(AudioFailureKind.Slow, out delay);
+            for (int tick = 0; tick <= 1250; tick++)
+                policy.ObserveHealthy(tick / 10.0, new EngineSnapshot {
+                    State = "运行中", InputQueueMs = 75 + 5 * Math.Sin(tick / 10.0), Underruns = tick > 600 ? 1 : 0,
+                    CaptureFrames = tick + 1, Blocks = tick + 1, ProcessedRenderFrames = tick + 1 });
+            check(policy.Attempts == 0, "stable 70 to 80 ms with an isolated underrun can replenish credit");
+
             bool rejects = true;
             foreach (AudioFailureKind kind in Enum.GetValues(typeof(AudioFailureKind)))
                 if (kind != AudioFailureKind.Slow && kind != AudioFailureKind.InputTimeout && kind != AudioFailureKind.OutputTimeout && kind != AudioFailureKind.ModelTimeout)
